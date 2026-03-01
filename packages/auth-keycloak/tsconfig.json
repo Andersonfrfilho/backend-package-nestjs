@@ -1,0 +1,14 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "outDir": "dist",
+    "composite": false
+    ,
+    "paths": {
+      "@backend/http-client": ["../http-client/dist"],
+      "@backend/http-client/*": ["../http-client/dist/*"]
+    }
+  },
+  "include": ["src"]
+}

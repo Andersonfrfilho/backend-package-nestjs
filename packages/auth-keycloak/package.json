@@ -1,0 +1,14 @@
+{
+  "name": "@backend/auth-keycloak",
+  "version": "0.0.0",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "build:watch": "tsc -p tsconfig.json -w",
+    "test": "echo \"no tests\""
+  },
+  "dependencies": {
+    "@backend/http-client": "workspace:*"
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "declaration": true,
+    "outDir": "dist",
+    "composite": true,
+    "emitDecoratorMetadata": true,
+    "experimentalDecorators": true,
+    "skipLibCheck": true,
+    "baseUrl": ".",
+    "paths": {
+      "@backend/package-nestjs": ["packages/package-nestjs/src"],
+      "@backend/package-nestjs/*": ["packages/package-nestjs/src/*"],
+      "@backend/http-client": ["packages/http-client/src"],
+      "@backend/http-client/*": ["packages/http-client/src/*"],
+      "@backend/auth-keycloak": ["packages/auth-keycloak/src"],
+      "@backend/auth-keycloak/*": ["packages/auth-keycloak/src/*"]
+      ,
+      "@backend/shared": ["packages/shared/src"],
+      "@backend/shared/*": ["packages/shared/src/*"]
+    }
+  },
+  "exclude": ["node_modules", "dist"]
+}

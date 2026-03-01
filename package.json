@@ -1,0 +1,37 @@
+{
+  "name": "backend-monorepo",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Monorepo for backend shared packages",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "workspaces": [
+    "packages/*",
+    "example"
+  ],
+  "scripts": {
+    "bootstrap": "pnpm install",
+    "build": "turbo run build",
+    "build:packages": "turbo run build --scope packages/**",
+    "dev": "turbo run dev --parallel",
+    "clean": "rm -rf dist packages/**/dist",
+    "prepublishOnly": "npm run build",
+    "example:start:dev": "cd example && npm run start:dev",
+    "example:start": "pnpm --filter example run start",
+    "watch:packages": "pnpm -r --parallel run build:watch"
+  },
+  "peerDependencies": {
+    "@nestjs/common": "^9 || ^11",
+    "@nestjs/core": "^9 || ^11"
+  },
+  "devDependencies": {
+    "turbo": "^1.8.0",
+    "pnpm": "^8.0.0",
+    "changesets": "^1.0.2",
+    "typescript": "^5.2.0",
+    "tslib": "^2.5.0"
+  }
+}
