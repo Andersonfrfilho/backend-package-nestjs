@@ -14,10 +14,6 @@
     "sourceMap": true,
     "outDir": "./dist",
     "baseUrl": "./",
-    "paths": {
-      "@backend/package-nestjs": ["../packages/package-nestjs/src"],
-      "@backend/package-nestjs/*": ["../packages/package-nestjs/src/*"]
-    },
     "incremental": true,
     "skipLibCheck": true,
     "strictNullChecks": true,

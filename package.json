@@ -19,7 +19,6 @@
     "dev": "turbo run dev --parallel",
     "clean": "rm -rf dist packages/**/dist",
     "prepublishOnly": "npm run build",
-    "example:start:dev": "cd example && npm run start:dev",
     "example:start": "pnpm --filter example run start",
     "watch:packages": "pnpm -r --parallel run build:watch"
   },

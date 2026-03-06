@@ -4,7 +4,10 @@ import { AppService } from './app.service';
 import { ExampleModule } from '@backend/package-nestjs';
 
 @Module({
-  imports: [ExampleModule.forRoot({ prefix: 'example', enabled: true })],
+  imports: [
+    // register the example library with options
+    ExampleModule.forRoot({ prefix: 'demo', enabled: true }),
+  ],
   controllers: [AppController],
   providers: [AppService],
 })

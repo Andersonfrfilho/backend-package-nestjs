@@ -1,21 +1,3 @@
-# Example
-
-Este diretório contém um app NestJS mínimo que demonstra o uso do módulo compartilhado contido na raiz do repositório.
-
-Como executar
-
-```bash
-cd example
-npm install
-# execução em modo desenvolvimento (usa ts-node)
-npm run start:dev
-
-# executar diretamente com ts-node (útil ao consumir o pacote TS localmente)
-npx ts-node -r tsconfig-paths/register src/main.ts
-```
-
-Endereço padrão: http://localhost:3000/
-
 <p align="center">
   <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
 </p>
@@ -46,33 +28,33 @@ Endereço padrão: http://localhost:3000/
 ## Project setup
 
 ```bash
-$ npm install
+$ pnpm install
 ```
 
 ## Compile and run the project
 
 ```bash
 # development
-$ npm run start
+$ pnpm run start
 
 # watch mode
-$ npm run start:dev
+$ pnpm run start:dev
 
 # production mode
-$ npm run start:prod
+$ pnpm run start:prod
 ```
 
 ## Run tests
 
 ```bash
 # unit tests
-$ npm run test
+$ pnpm run test
 
 # e2e tests
-$ npm run test:e2e
+$ pnpm run test:e2e
 
 # test coverage
-$ npm run test:cov
+$ pnpm run test:cov
 ```
 
 ## Deployment
@@ -82,7 +64,7 @@ When you're ready to deploy your NestJS application to production, there are som
 If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
 
 ```bash
-$ npm install -g @nestjs/mau
+$ pnpm install -g @nestjs/mau
 $ mau deploy
 ```
 
