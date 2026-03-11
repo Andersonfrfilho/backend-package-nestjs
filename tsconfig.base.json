@@ -13,8 +13,8 @@
     "paths": {
       "@backend/package-nestjs": ["packages/package-nestjs/src"],
       "@backend/package-nestjs/*": ["packages/package-nestjs/src/*"],
-      "@backend/http-client": ["packages/http-client/src"],
-      "@backend/http-client/*": ["packages/http-client/src/*"],
+      "@backend/http-client": ["packages/http/src"],
+      "@backend/http-client/*": ["packages/http/src/*"],
       "@backend/auth-keycloak": ["packages/auth-keycloak/src"],
       "@backend/auth-keycloak/*": ["packages/auth-keycloak/src/*"]
       ,

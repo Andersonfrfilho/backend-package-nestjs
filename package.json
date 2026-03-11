@@ -27,10 +27,14 @@
     "@nestjs/core": "^9 || ^11"
   },
   "devDependencies": {
-    "turbo": "^1.8.0",
-    "pnpm": "^8.0.0",
     "changesets": "^1.0.2",
-    "typescript": "^5.2.0",
-    "tslib": "^2.5.0"
+    "pnpm": "^8.0.0",
+    "tslib": "^2.5.0",
+    "turbo": "^1.8.0",
+    "typescript": "^5.2.0"
+  },
+  "dependencies": {
+    "axios": "^1.13.6",
+    "rxjs": "^7.8.2"
   }
 }

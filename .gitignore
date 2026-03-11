@@ -1,2 +1,7 @@
 node_modules/
 dist/
+# ignore compiled JS and source maps from per-package builds
+packages/*/src/**/*.js
+packages/*/src/**/*.js.map
+packages/*/src/**/*.d.ts
+packages/*/dist
