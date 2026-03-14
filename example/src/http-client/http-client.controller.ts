@@ -11,8 +11,8 @@ import {
   Param,
 } from '@nestjs/common';
 import { Inject } from '@nestjs/common';
-import { HTTP_PROVIDER } from '@backend/http-client';
-import type { HttpProviderInterface } from '@backend/http-client';
+import { HTTP_PROVIDER } from '@adatechnology/http-client';
+import type { HttpProviderInterface } from '@adatechnology/http-client';
 
 let lastRequestInterceptorId: number | null = null;
 let lastResponseInterceptorId: number | null = null;
@@ -133,8 +133,8 @@ export class HttpClientController {
   @Get('code-samples')
   codeSamples() {
     return {
-      forRoot: `import { HttpModule } from '@backend/http-client';\\n\\nimports: [HttpModule.forRoot({ baseURL: 'https://pokeapi.co/api/v2' })]`,
-      explicit: `import { HttpImplementationAxiosModule } from '@backend/http-client';\\n\\nimports: [HttpImplementationAxiosModule.forRoot({ baseURL: 'https://pokeapi.co/api/v2' }), HttpModule.forRoot()]`,
+      forRoot: `import { HttpModule } from '@adatechnology/http-client';\\n\\nimports: [HttpModule.forRoot({ baseURL: 'https://pokeapi.co/api/v2' })]`,
+      explicit: `import { HttpImplementationAxiosModule } from '@adatechnology/http-client';\\n\\nimports: [HttpImplementationAxiosModule.forRoot({ baseURL: 'https://pokeapi.co/api/v2' }), HttpModule.forRoot()]`,
       interceptors: `const id = httpProvider.addRequestInterceptor(config => { config.headers['X-Id']='1'; return config; }); httpProvider.removeRequestInterceptor(id);`,
     };
   }

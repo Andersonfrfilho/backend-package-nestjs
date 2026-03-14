@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 import { HttpClientController } from './http-client.controller';
-import { HttpModule } from '@backend/http-client';
+import { HttpModule } from '@adatechnology/http-client';
 
 @Module({
   imports: [

@@ -60,7 +60,7 @@ Usage
 
 ```ts
 import { Module } from "@nestjs/common";
-import { ExampleModule } from "@backend/package-nestjs";
+import { ExampleModule } from "@adatechnology/package-nestjs";
 
 @Module({
   imports: [ExampleModule.forRoot({ prefix: "backend", enabled: true })],
@@ -72,7 +72,7 @@ export class AppModule {}
 
 ```ts
 import { Injectable } from "@nestjs/common";
-import { ExampleService } from "@backend/package-nestjs";
+import { ExampleService } from "@adatechnology/package-nestjs";
 
 @Injectable()
 export class MyService {
@@ -93,7 +93,7 @@ Additional usage examples
 ```ts
 import { Module } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { ExampleModule } from '@backend/package-nestjs';
+import { ExampleModule } from '@adatechnology/package-nestjs';
 
 @Module({
   imports: [
@@ -115,7 +115,7 @@ Library exposes helper tokens: `createExampleOptionsToken(name)` and `createExam
 
 ````ts
 import { Module, Inject } from '@nestjs/common';
-import { ExampleModule, createExampleServiceToken } from '@backend/package-nestjs';
+import { ExampleModule, createExampleServiceToken } from '@adatechnology/package-nestjs';
 
 @Module({
   imports: [
@@ -126,9 +126,9 @@ export class HealthModule {}
 
 // consumer - controller example using typed import
 ```ts
-import type { ExampleServiceInterface } from '@backend/package-nestjs';
+import type { ExampleServiceInterface } from '@adatechnology/package-nestjs';
 import { Inject, Controller, Get } from '@nestjs/common';
-import { createExampleServiceToken } from '@backend/package-nestjs';
+import { createExampleServiceToken } from '@adatechnology/package-nestjs';
 
 @Controller('health')
 export class HealthController {

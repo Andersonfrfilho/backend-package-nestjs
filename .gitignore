@@ -5,3 +5,5 @@ packages/*/src/**/*.js
 packages/*/src/**/*.js.map
 packages/*/src/**/*.d.ts
 packages/*/dist
+.turbo/
+## local npm auth (managed in repo now)

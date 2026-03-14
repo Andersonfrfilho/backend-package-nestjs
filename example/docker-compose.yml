@@ -1,0 +1,18 @@
+services:
+  keycloak:
+    image: quay.io/keycloak/keycloak:21.1.1
+    container_name: keycloak-example
+    environment:
+      - KEYCLOAK_ADMIN=admin
+      - KEYCLOAK_ADMIN_PASSWORD=admin
+    volumes:
+      - ./keycloak-config:/opt/keycloak/data/import:ro
+    command: ['start-dev', '--import-realm']
+    ports:
+      - '${KEYCLOAK_PORT:-8080}:8080'
+    restart: unless-stopped
+    healthcheck:
+      test: ['CMD-SHELL', 'curl -sS http://localhost:8080/ || exit 1']
+      interval: 10s
+      timeout: 5s
+      retries: 10

@@ -23,14 +23,10 @@
     "strictBindCallApply": false,
     "noFallthroughCasesInSwitch": false,
     "paths": {
-      "@backend/package-nestjs": ["packages/package-nestjs/dist"],
-      "@backend/package-nestjs/*": ["packages/package-nestjs/dist/*"],
-      "@backend/http-client": ["packages/http/dist"],
-      "@backend/http-client/*": ["packages/http/dist/*"],
-      "@backend/auth-keycloak": ["packages/keycloak/dist"],
-      "@backend/auth-keycloak/*": ["packages/keycloak/dist/*"],
-      "@backend/shared": ["packages/shared/dist"],
-      "@backend/shared/*": ["packages/shared/dist/*"]
+      "@adatechnology/package-nestjs": ["packages/package-nestjs/dist"],
+      "@adatechnology/package-nestjs/*": ["packages/package-nestjs/dist/*"],
+      "@adatechnology/shared": ["packages/shared/dist"],
+      "@adatechnology/shared/*": ["packages/shared/dist/*"]
     }
   }
 }

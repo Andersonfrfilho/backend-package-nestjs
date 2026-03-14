@@ -1,6 +1,6 @@
 import { Controller, Get, Inject } from '@nestjs/common';
 import { AppService } from './app.service';
-import { EXAMPLE_SERVICE_PROVIDE } from '@backend/package-nestjs';
+import { EXAMPLE_SERVICE_PROVIDE } from '@adatechnology/package-nestjs';
 
 @Controller()
 export class AppController {

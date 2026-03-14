@@ -1,7 +1,7 @@
 {
-  "name": "@backend/http-client",
-  "version": "0.0.0",
-  "private": true,
+  "name": "@adatechnology/http-client",
+  "version": "0.0.1",
+  "publishConfig": { "access": "public" },
   "type": "commonjs",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -9,5 +9,9 @@
     "prebuild": "rm -rf dist",
     "build": "tsc -p tsconfig.json",
     "check": "tsc -p tsconfig.json --noEmit"
+  },
+  "peerDependencies": {
+    "@nestjs/common": "^11",
+    "@nestjs/core": "^11"
   }
 }

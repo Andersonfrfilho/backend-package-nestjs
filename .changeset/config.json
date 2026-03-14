@@ -3,7 +3,7 @@
   "changelog": [
     "@changesets/changelog-github",
     {
-      "repo": "your/repo"
+      "repo": "Andersonfrfilho/backend-package-nestjs"
     }
   ],
   "access": "restricted",

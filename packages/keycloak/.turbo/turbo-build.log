@@ -1,0 +1,4 @@
+
+> @backend/auth-keycloak@0.0.0 build /Users/anderson.filho/Documents/personal/backend-package-nestjs/packages/keycloak
+> tsc -b
+

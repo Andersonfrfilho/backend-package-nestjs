@@ -14,11 +14,11 @@ Este módulo fornece uma interface HTTP completa e flexível para fazer requisi�
 pnpm add -w axios rxjs
 ```
 
-2. Configure o módulo no seu AppModule usando `forRoot` para fornecer uma instância Axios configurada (baseURL, timeout, headers etc.). O pacote publica o namespace `@backend/http-client`.
+2. Configure o módulo no seu AppModule usando `forRoot` para fornecer uma instância Axios configurada (baseURL, timeout, headers etc.). O pacote publica o namespace `@adatechnology/http-client`.
 
 ```ts
 import { Module } from "@nestjs/common";
-import { HttpModule } from "@backend/http-client";
+import { HttpModule } from "@adatechnology/http-client";
 
 @Module({
   imports: [
@@ -33,7 +33,10 @@ Após isso, injete o provider padrão `HTTP_PROVIDER` no seu serviço:
 
 ```ts
 import { Inject, Injectable } from "@nestjs/common";
-import { HTTP_PROVIDER, HttpProviderInterface } from "@backend/http-client";
+import {
+  HTTP_PROVIDER,
+  HttpProviderInterface,
+} from "@adatechnology/http-client";
 
 @Injectable()
 export class MeuServico {
@@ -65,7 +68,7 @@ imports: [HttpModule.forRoot({ baseURL: "https://api.example.com" })];
 2. Importar explicitamente o módulo de implementação quando precisar de controle fino ou quiser trocar de driver:
 
 ```ts
-import { HttpImplementationAxiosModule } from "@backend/http-client";
+import { HttpImplementationAxiosModule } from "@adatechnology/http-client";
 
 imports: [
   // registra a conexão e o provider Axios

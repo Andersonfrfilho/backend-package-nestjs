@@ -1,6 +1,7 @@
 {
-  "name": "@backend/package-nestjs",
+  "name": "@adatechnology/package-nestjs",
   "version": "0.1.0",
+  "private": true,
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "files": [
@@ -16,6 +17,6 @@
     "@nestjs/core": "^11"
   },
   "dependencies": {
-    "@backend/shared": "workspace:*"
+    "@adatechnology/shared": "workspace:*"
   }
 }
