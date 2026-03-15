@@ -1,0 +1,3 @@
+# Publicação
+
+<!--@include: ../PUBLISHING.md-->

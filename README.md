@@ -1,151 +1,148 @@
 # backend-package-nestjs
 
-Pacote compartilhado com utilitários e um módulo NestJS de exemplo.
+Monorepo de pacotes NestJS/Node para backend (ex.: `@adatechnology/http-client`, `@adatechnology/auth-keycloak`) + um app de exemplo em `example/`.
 
-Principais pontos
+## Como este repositório está organizado
 
-- O código fonte do pacote está em `src/` e o bundle publicado/compilado vai para `dist/`.
-- Um projeto de exemplo está em `example/` para demonstrar integração e uso do módulo.
+- `packages/` — onde ficam os pacotes (cada pasta é um pacote)
+- `example/` — aplicação NestJS para testar integração local
+- `scripts/` — scripts auxiliares (quando necessário)
 
-Scripts úteis (na raiz)
+Cada pacote publica apenas a pasta `dist/` (campo `files` no `package.json`).
 
-- `npm run build` — compila o pacote (`tsc -p tsconfig.build.json`).
-- `npm run clean` — remove `dist`.
-- `npm run example:start` — entra na pasta `example` e executa `npm run start` para subir o exemplo.
+## O que é o tsup (e por que usamos aqui)
 
-Rodando o example localmente
+`tsup` é uma ferramenta de build para TypeScript baseada em **esbuild** (um bundler muito rápido).
+
+Na prática, ele ajuda a:
+
+- compilar TypeScript para JavaScript
+- gerar arquivos de tipos (`.d.ts`)
+- **embutir (bundle)** código importado de outros arquivos/pastas quando você quer publicar um pacote “autocontido”
+
+Esse último ponto é importante no nosso caso porque temos código interno compartilhado (tipo o `shared`) que **não é publicado no npm**.
+
+## Código compartilhado interno (alias `#shared`)
+
+Este repositório define um alias de import para o código do `shared`:
+
+- `#shared/*` → `packages/shared/src/*`
+
+Ele está configurado no `tsconfig.base.json`.
+
+### Por que não usar `@adatechnology/shared`?
+
+Porque o `shared` **não é publicado**. Se um pacote publicado importasse `@adatechnology/shared`, quem instalar do npm não teria esse pacote no `node_modules` e daria erro.
+
+Com `#shared/*` você importa por caminho/alias interno e o build (via `tsup`) consegue **embutir** esse código dentro do `dist` do pacote publicado.
+
+## Scripts úteis (na raiz)
+
+- `pnpm run build` — build do monorepo (via Turbo)
+- `pnpm run clean` — remove artefatos de build
+- `pnpm run watch:packages` — build watch das packages
+- `pnpm run example:start` — inicia o app `example`
+
+## Rodando o example localmente
 
 ```bash
-# da raiz do repositório
-npm install
-npm run example:start
+pnpm install
+pnpm run example:start
+```
 
-# alternativa (desenvolvimento rápido direto na pasta example)
+Para desenvolvimento “mais próximo de produção”, use:
+
+```bash
+# terminal 1 (watch das libs)
+pnpm run watch:packages
+
+# terminal 2
 cd example
-npm install
-npx ts-node -r tsconfig-paths/register src/main.ts
+pnpm run start:dev
 ```
 
-Notas
+## Como criar um novo pacote em `packages/`
 
-- Durante desenvolvimento o exemplo pode executar diretamente com `ts-node` para evitar build prévio do `example/dist`.
-- As interfaces exportadas pelo pacote principal são importadas usando `import type` quando apropriado para manter compatibilidade com `emitDecoratorMetadata` e `isolatedModules`.
+Checklist simples (o “padrão do repo”):
 
-Fluxo de desenvolvimento recomendado
+1. Crie a pasta do pacote:
 
-- Build watch das libs e restart automático do `example` quando um pacote recompilar (comportamento próximo ao de produção):
+- `packages/meu-pacote/`
+  - `src/index.ts`
+  - `package.json`
+  - `tsconfig.json`
 
-  # na raiz (roda o watch em todas as packages em paralelo)
+2. Garanta que o `package.json` publique só `dist/`:
 
-  pnpm run watch:packages
+- `main`: `dist/index.js`
+- `types`: `dist/index.d.ts`
+- `files`: `["dist"]`
 
-  # em outra aba, rode o example em modo dev (observando dist do example e das libs)
+3. Adicione scripts básicos:
 
-  cd example
-  pnpm run start:dev
+- `build`: `tsup` (recomendado)
+- `build:watch`: `tsup --watch`
+- `check`: `tsc -p tsconfig.json --noEmit`
 
-- Para desenvolvimento rápido você pode usar `ts-node`/`tsconfig-paths`, mas o fluxo acima garante que o `example` esteja executando o JS compilado (igual à produção).
+4. Se o pacote for publicado, cuide de:
 
-# @backend-package-nestjs
+- `publishConfig.access: "public"` (se for o caso)
+- `peerDependencies` para Nest (`@nestjs/common`, `@nestjs/core`)
+- `changesets` (ver `PUBLISHING.md`)
 
-Shared NestJS module for backend services.
+### Template recomendado (tsup + alias)
 
-Usage
+Para pacotes que podem importar `#shared/*` (ou outros módulos internos), usamos:
 
-1. Install (local development):
+- `tsup.config.ts` com `TsconfigPathsPlugin`
+- `tsconfig.tsup.json` (um tsconfig “só do build”) para evitar problemas de `.d.ts`
 
-   npm i ../packages/@backend-package-nestjs
+Exemplo do que você deve procurar nos pacotes que já estão prontos (`packages/http` e `packages/keycloak`).
 
-2. In your Nest module:
+## Como adicionar um novo “módulo interno” no shared
+
+1. Crie o arquivo dentro de `packages/shared/src/`.
+
+Ex.: `packages/shared/src/date/parse-date.ts`
+
+2. Exporte no `packages/shared/src/index.ts`.
+
+3. Use no pacote consumidor assim:
 
 ```ts
-import { Module } from "@nestjs/common";
-import { ExampleModule } from "@adatechnology/package-nestjs";
-
-@Module({
-  imports: [ExampleModule.forRoot({ prefix: "backend", enabled: true })],
-})
-export class AppModule {}
+import { parseDate } from "#shared/date/parse-date";
 ```
 
-3. Inject the SharedService where needed:
+Se o pacote consumidor usa `tsup` com `tsconfig-paths`, o código será incluído no `dist` do pacote publicado.
 
-```ts
-import { Injectable } from "@nestjs/common";
-import { ExampleService } from "@adatechnology/package-nestjs";
+## Como criar outro módulo interno “igual ao shared” (sem publicar no npm)
 
-@Injectable()
-export class MyService {
-  constructor(private readonly shared: ExampleService) {}
-}
-```
+Se você quiser outro módulo interno (ex.: `packages/internal-logger`) e ele **não será publicado**:
 
-Build
+1. Crie `packages/internal-logger/src/...` e deixe o `package.json` como `private: true`.
 
-````
-cd packages/@backend-package-nestjs
-npm run build
+2. Adicione um alias no `tsconfig.base.json`, por exemplo:
 
-Additional usage examples
+- `#logger/*` → `packages/internal-logger/src/*`
 
-1) forRootAsync (load options from ConfigService)
+3. Nos pacotes publicados que vão consumir isso:
 
-```ts
-import { Module } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import { ExampleModule } from '@adatechnology/package-nestjs';
+- mantenha o build via `tsup`
+- inclua o alias no `tsconfig.tsup.json` do pacote (igual fizemos no `auth-keycloak` com `#shared/*`), para evitar “vazar” paths do monorepo em `.d.ts`.
 
-@Module({
-  imports: [
-    ExampleModule.forRootAsync({
-      useFactory: (config: ConfigService) => ({
-        prefix: config.get('PREFIX'),
-        enabled: config.get('ENABLED') === 'true',
-      }),
-      inject: [ConfigService],
-    }),
-  ],
-})
-export class AppModule {}
-````
+## Documentação: dá para usar Storybook + MDX?
 
-2. register per-feature instances (named tokens)
+Dá, sim — o Storybook tem suporte a documentação em **MDX** (via `@storybook/addon-docs`).
 
-Library exposes helper tokens: `createExampleOptionsToken(name)` and `createExampleServiceToken(name)`.
+Mas um aviso honesto: Storybook brilha mais quando você tem **componentes visuais (UI)**.
+Para bibliotecas de backend, normalmente fica mais leve e simples usar:
 
-````ts
-import { Module, Inject } from '@nestjs/common';
-import { ExampleModule, createExampleServiceToken } from '@adatechnology/package-nestjs';
+- Markdown no próprio repo (como este README + docs por pacote)
+- VitePress ou Docusaurus (geram site de docs bem rápido)
+- TypeDoc (gera docs da API a partir dos tipos)
 
-@Module({
-  imports: [
-    ExampleModule.register('health', { prefix: 'health', enabled: true }),
-  ],
-})
-export class HealthModule {}
+Se vocês já curtem Storybook e querem uma “central de docs” com MDX mesmo para backend, funciona — só tende a ser mais pesado do que precisa.
 
-// consumer - controller example using typed import
-```ts
-import type { ExampleServiceInterface } from '@adatechnology/package-nestjs';
-import { Inject, Controller, Get } from '@nestjs/common';
-import { createExampleServiceToken } from '@adatechnology/package-nestjs';
+## Publicação
 
-@Controller('health')
-export class HealthController {
-  constructor(@Inject(createExampleServiceToken('health')) private readonly shared: ExampleServiceInterface) {}
-
-  @Get()
-  check() {
-    return { prefix: this.shared.getPrefix() };
-  }
-}
-````
-
-```
-
-3) Notes
--- Use `ExampleModule.forRoot()` in the root `AppModule` for a single global instance.
--- Use `ExampleModule.register(name, opts)` when you need multiple independent instances (per feature).
-- The library declares `@nestjs/*` as `peerDependencies` — ensure your app installs Nest and there is a single copy at runtime.
-
-```
+Veja `PUBLISHING.md` para o fluxo de publish (local dry-run e CI).
