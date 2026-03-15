@@ -15,10 +15,13 @@
       "@adatechnology/package-nestjs/*": ["packages/package-nestjs/src/*"],
       "@adatechnology/http-client": ["packages/http/src"],
       "@adatechnology/http-client/*": ["packages/http/src/*"],
-      "@adatechnology/auth-keycloak": ["packages/auth-keycloak/src"],
-      "@adatechnology/auth-keycloak/*": ["packages/auth-keycloak/src/*"],
+      "@adatechnology/auth-keycloak": ["packages/keycloak/src"],
+      "@adatechnology/auth-keycloak/*": ["packages/keycloak/src/*"],
       "@adatechnology/shared": ["packages/shared/src"],
-      "@adatechnology/shared/*": ["packages/shared/src/*"]
+      "@adatechnology/shared/*": ["packages/shared/src/*"],
+
+      "#shared": ["packages/shared/src"],
+      "#shared/*": ["packages/shared/src/*"]
     }
   },
   "exclude": ["node_modules", "dist"]

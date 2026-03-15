@@ -1,4 +1,0 @@
-
-> @backend/http-client@0.0.0 build /Users/anderson.filho/Documents/personal/backend-package-nestjs/packages/http
-> tsc -p tsconfig.json
-

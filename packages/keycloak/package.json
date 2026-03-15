@@ -1,7 +1,9 @@
 {
   "name": "@adatechnology/auth-keycloak",
   "version": "0.0.1",
-  "publishConfig": { "access": "public" },
+  "publishConfig": {
+    "access": "public"
+  },
   "main": "dist/index.js",
   "module": "dist/index.mjs",
   "types": "dist/index.d.ts",
@@ -9,8 +11,9 @@
     "dist"
   ],
   "scripts": {
-    "build": "tsc -b",
-    "build:watch": "tsc -b --watch",
+    "build": "tsup",
+    "build:watch": "tsup --watch",
+    "check": "tsc -p tsconfig.json --noEmit",
     "test": "echo \"no tests\""
   },
   "dependencies": {
@@ -20,5 +23,9 @@
     "@nestjs/common": "^11",
     "@nestjs/core": "^11"
   },
-  "devDependencies": {}
+  "devDependencies": {
+    "@esbuild-plugins/tsconfig-paths": "^0.1.2",
+    "tsup": "^8.5.1",
+    "typescript": "^5.2.0"
+  }
 }

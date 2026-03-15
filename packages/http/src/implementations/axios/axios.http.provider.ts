@@ -584,7 +584,25 @@ export class AxiosHttpProvider implements AxiosHttpProviderInterface {
       return await method();
     } catch (error) {
       const processedError = await this.processErrorInterceptors(error);
-      throw processedError;
+      // Map to a normalized application error with context
+      try {
+        // lazy import to avoid circular deps at runtime - use local mapper
+        const { ErrorMapperService } = require("../../errors/error-mapper.service");
+        const { HttpClientError } = require("../../errors/http-client-error");
+        const mapper = new ErrorMapperService();
+        const mapped = mapper.mapUpstreamError(processedError);
+        throw new HttpClientError(mapped.message, mapped.status, mapped.code, mapped.context);
+      } catch (mapErr) {
+        // If mapping fails, rethrow a generic HttpClientError with minimal context
+        const { HttpClientError } = require("../../errors/http-client-error");
+        const fallback = new HttpClientError(
+          (processedError && (processedError as any).message) || 'HTTP client error',
+          (processedError && (processedError as any).status) || 502,
+          (processedError && (processedError as any).code) || undefined,
+          { original: String(processedError) },
+        );
+        throw fallback;
+      }
     }
   }
 

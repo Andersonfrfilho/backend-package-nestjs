@@ -16,7 +16,7 @@
     "bootstrap": "pnpm install",
     "build": "turbo run build",
     "build:packages": "turbo run build --scope packages/**",
-    "build:libs-ordered": "pnpm --filter @adatechnology/http-client build && pnpm --filter @adatechnology/auth-keycloak build",
+    "build:libs-ordered": "tsc -b packages/shared packages/keycloak && pnpm --filter @adatechnology/http-client run build",
     "build:all": "pnpm run build:libs-ordered && pnpm --filter example build || true",
     "dev": "turbo run dev --parallel",
     "clean": "rm -rf dist packages/**/dist",

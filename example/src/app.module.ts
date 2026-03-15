@@ -15,12 +15,13 @@ import { KeycloakDemoModule } from './keycloak-demo/keycloak-demo.module';
     HttpClientModule,
     // example Keycloak infra (configured with example values)
     KeycloakModule.forRoot({
-      baseUrl: 'https://keycloak.example.com',
-      realm: 'BACKEND',
+      // allow overriding the Keycloak URL/port via environment for local testing
+      baseUrl: process.env.KEYCLOAK_BASE_URL || `http://localhost:${process.env.KEYCLOAK_PORT || 9090}`,
+      realm: process.env.KEYCLOAK_REALM || 'BACKEND',
       credentials: {
-        clientId: 'backend-api',
-        clientSecret: 'backend-api-secret',
-        grantType: 'client_credentials',
+        clientId: process.env.KEYCLOAK_CLIENT_ID || 'backend-api',
+        clientSecret: process.env.KEYCLOAK_CLIENT_SECRET || 'backend-api-secret',
+        grantType: process.env.KEYCLOAK_GRANT_TYPE || 'client_credentials',
       },
     }),
     // demo module that exposes endpoints to exercise KeycloakClient

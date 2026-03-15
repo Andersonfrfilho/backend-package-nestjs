@@ -11,10 +11,13 @@ Run:
 
 ```bash
 # from the `example/` folder
+# Copy `.env.example` to `.env` to override defaults (recommended)
+# The example repository provides `example/.env.example` with KEYCLOAK_PORT=9090.
+# Use that port to avoid conflicts with other local Keycloak instances.
 docker compose up -d
 
-# Keycloak admin console after start:
-# URL: http://localhost:8080/
+# Keycloak admin console after start (example default):
+# URL: http://localhost:9090/  (or the value of KEYCLOAK_PORT in .env)
 # Username: admin
 # Password: admin
 ```
@@ -32,8 +35,29 @@ KEYCLOAK_PORT=9080 docker compose up -d
 
 Notes:
 
-- The Docker image used is `quay.io/keycloak/keycloak:21.1.1` and is started in `start-dev` mode with `--import-realm` so any json files under `keycloak-config/` are picked up.
+- The Docker image used is `quay.io/keycloak/keycloak:21.1.1` and is started in `start-dev` mode with `--import-realm` so any json files under `keycloak-config/` are picked up. The compose mounts `./keycloak-config` into the container at `/opt/keycloak/data/import`.
 - If the Keycloak image version in your environment differs, adjust the `image` field in `docker-compose.yml`.
+
+Import troubleshooting and manual import
+- Se o realm não for encontrado ("Realm does not exist"), verifique primeiro se não há outra instância do Keycloak rodando em outra porta (ex.: 8080). Use o `KEYCLOAK_PORT` no `.env` para apontar para a porta do exemplo.
+- Verifique que o arquivo JSON está presente no host e montado no container:
+
+```bash
+cd example
+ls -la keycloak-config
+docker compose exec keycloak ls -la /opt/keycloak/data/import
+```
+
+- Se o arquivo não for montado, o `docker compose` pode ter sido executado de outro diretório ou o bind está incorreto. Para forçar nova importação (ATENÇÃO: `-v` remove volumes):
+
+```bash
+docker compose down -v
+docker compose up -d
+docker compose logs keycloak --tail=200
+```
+
+- Alternativamente, importe manualmente via Admin Console: acesse http://localhost:9090 (ou porta definida), entre com admin/admin → Realms → Add realm → Import e carregue `example/keycloak-config/example-realm.json`.
+
 
 ## Testes manuais (curl)
 
