@@ -6,9 +6,18 @@
       "repo": "Andersonfrfilho/backend-package-nestjs"
     }
   ],
-  "access": "restricted",
+  "access": "public",
   "baseBranch": "main",
   "updateInternalDependencies": "patch",
   "commit": false,
+  "ignore": [
+    "example",
+    "@adatechnology/shared",
+    "@adatechnology/package-nestjs"
+  ],
+  "privatePackages": {
+    "version": false,
+    "tag": false
+  },
   "fixed": []
 }

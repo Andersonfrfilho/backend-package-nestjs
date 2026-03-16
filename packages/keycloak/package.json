@@ -1,6 +1,6 @@
 {
   "name": "@adatechnology/auth-keycloak",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "publishConfig": {
     "access": "public"
   },
@@ -17,10 +17,10 @@
     "test": "echo \"no tests\""
   },
   "dependencies": {
-    "@adatechnology/http-client": "workspace:*"
+    "@adatechnology/http-client": "^0.0.2"
   },
   "peerDependencies": {
-    "@nestjs/common": "^11",
+    "@nestjs/common": "^11.0.16",
     "@nestjs/core": "^11"
   },
   "devDependencies": {
