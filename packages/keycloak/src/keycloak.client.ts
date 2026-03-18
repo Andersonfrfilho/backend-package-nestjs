@@ -56,6 +56,9 @@ export class KeycloakClient implements KeycloakClientInterface {
       data.append("client_secret", this.config.credentials.clientSecret);
     }
 
+    // include openid scope so userinfo endpoint accepts the token
+    data.append("scope", "openid profile email");
+
     const response = await this.httpProvider.post<any>(tokenUrl, data, {
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
     } as any);
@@ -80,6 +83,8 @@ export class KeycloakClient implements KeycloakClientInterface {
       ) {
         data.append("username", this.config.credentials.username);
         data.append("password", this.config.credentials.password);
+        // include openid scope for resource-owner password grants
+        data.append("scope", "openid profile email");
       }
     }
 

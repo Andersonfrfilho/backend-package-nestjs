@@ -10,6 +10,7 @@ import {
   Body,
   Param,
 } from '@nestjs/common';
+import { Observable } from 'rxjs';
 import { Inject } from '@nestjs/common';
 import { HTTP_PROVIDER } from '@adatechnology/http-client';
 import type { HttpProviderInterface } from '@adatechnology/http-client';
@@ -77,7 +78,7 @@ export class HttpClientController {
 
   // Observable example
   @Get('get-observable')
-  getObservable() {
+  getObservable(): Observable<any> {
     return this.http.get$('/pokemon');
   }
 

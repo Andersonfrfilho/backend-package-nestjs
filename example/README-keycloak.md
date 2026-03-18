@@ -39,6 +39,7 @@ Notes:
 - If the Keycloak image version in your environment differs, adjust the `image` field in `docker-compose.yml`.
 
 Import troubleshooting and manual import
+
 - Se o realm não for encontrado ("Realm does not exist"), verifique primeiro se não há outra instância do Keycloak rodando em outra porta (ex.: 8080). Use o `KEYCLOAK_PORT` no `.env` para apontar para a porta do exemplo.
 - Verifique que o arquivo JSON está presente no host e montado no container:
 
@@ -57,7 +58,6 @@ docker compose logs keycloak --tail=200
 ```
 
 - Alternativamente, importe manualmente via Admin Console: acesse http://localhost:9090 (ou porta definida), entre com admin/admin → Realms → Add realm → Import e carregue `example/keycloak-config/example-realm.json`.
-
 
 ## Testes manuais (curl)
 

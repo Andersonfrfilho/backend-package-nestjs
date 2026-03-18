@@ -52,6 +52,18 @@ export class HttpProvider implements HttpProviderInterface {
     data?: any,
     config?: HttpRequestConfig,
   ): Promise<HttpResponse<T>> {
+    if (process.env.DEBUG_HTTP === "true") {
+      try {
+        // avoid serializing large/complex objects in production accidentally
+        const safeData =
+          typeof data === "object" ? JSON.stringify(data) : String(data);
+        // eslint-disable-next-line no-console
+        console.log("[http.provider] POST", url, safeData, config ?? {});
+      } catch (e) {
+        // ignore logging errors
+      }
+    }
+
     return this.axiosHttpProvider.post<T>(url, data, config);
   }
 
@@ -138,6 +150,24 @@ export class HttpProvider implements HttpProviderInterface {
   }
 
   async request<T>(config: HttpRequestConfig): Promise<HttpResponse<T>> {
+    if (process.env.DEBUG_HTTP === "true") {
+      try {
+        const { method, url, data, params } = config as any;
+        const safeData =
+          typeof data === "object" ? JSON.stringify(data) : String(data ?? "");
+        // eslint-disable-next-line no-console
+        console.log(
+          "[http.provider] REQUEST",
+          method ?? "GET",
+          url,
+          safeData,
+          params ?? {},
+        );
+      } catch (e) {
+        // ignore
+      }
+    }
+
     return this.axiosHttpProvider.request<T>(config);
   }
 
