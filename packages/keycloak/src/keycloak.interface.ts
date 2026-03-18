@@ -7,7 +7,7 @@ export interface KeycloakTokenResponse {
   refresh_expires_in: number;
   refresh_token: string;
   token_type: string;
-  'not-before-policy': number;
+  "not-before-policy": number;
   session_state: string;
   scope: string;
 }
@@ -20,7 +20,7 @@ export interface KeycloakCredentials {
   clientSecret: string;
   username?: string;
   password?: string;
-  grantType: 'client_credentials' | 'password';
+  grantType: "client_credentials" | "password";
 }
 
 /**
@@ -30,6 +30,11 @@ export interface KeycloakConfig {
   baseUrl: string;
   realm: string;
   credentials: KeycloakCredentials;
+  /**
+   * Optional scopes to request when fetching tokens. Can be a space-separated string or array of scopes.
+   * Defaults to ['openid', 'profile', 'email'] when omitted.
+   */
+  scopes?: string | string[];
 }
 
 /**

@@ -1,9 +1,14 @@
 import { Module } from '@nestjs/common';
+import { APP_INTERCEPTOR } from '@nestjs/core';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { ExampleModule } from '@adatechnology/package-nestjs';
 import { HttpClientModule } from './http-client/http-client.module';
-import { KeycloakModule } from '@adatechnology/auth-keycloak';
+import {
+  KeycloakModule,
+  KEYCLOAK_HTTP_INTERCEPTOR,
+} from '@adatechnology/auth-keycloak';
+import { SecureModule } from './secure/secure.module';
 import { KeycloakDemoModule } from './keycloak-demo/keycloak-demo.module';
 
 @Module({
@@ -33,8 +38,14 @@ import { KeycloakDemoModule } from './keycloak-demo/keycloak-demo.module';
     // demo module that exposes endpoints to exercise KeycloakClient
     // (GET /keycloak/token, GET /keycloak/userinfo?token=...)
     KeycloakDemoModule,
+    // secure demo that shows role-based decorators & guard
+    SecureModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [
+    AppService,
+    // register the Keycloak HTTP interceptor as a global interceptor (useExisting to reuse provider from KeycloakModule)
+    { provide: APP_INTERCEPTOR, useExisting: KEYCLOAK_HTTP_INTERCEPTOR },
+  ],
 })
 export class AppModule {}

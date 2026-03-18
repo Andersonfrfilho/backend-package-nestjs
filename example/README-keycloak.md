@@ -140,6 +140,26 @@ echo "$TOKEN"
 curl "http://localhost:3000/keycloak/userinfo?token=$TOKEN"
 ```
 
+## Endpoints de exemplo para autorização (roles)
+
+O exemplo inclui rotas de demonstração em `/secure` que mostram o uso do `@Roles()` e do `RolesGuard`:
+
+- GET `/secure/public` — rota pública
+- GET `/secure/admin` — requer role `admin`
+- GET `/secure/team` — requer BOTH `manager` e `lead` (mode: `all`)
+- GET `/secure/whoami` — rota auxiliar (pública)
+
+Exemplo de uso com token:
+
+```bash
+TOKEN=$(curl -s "http://localhost:3000/keycloak/token" | jq -r .access_token)
+curl -H "Authorization: Bearer $TOKEN" http://localhost:3000/secure/admin
+```
+
+Se o token não tiver a role necessária você receberá `403 Forbidden`.
+
+O `KeycloakHttpInterceptor` também é registrado globalmente neste exemplo (via `APP_INTERCEPTOR`) para demonstrar integração; na sua aplicação de produção você pode optar por registrar o interceptor apenas em módulos específicos.
+
 - Fazer login (username/password) via API `example` — POST `/keycloak/login`:
 
 ```bash

@@ -56,8 +56,8 @@ export class KeycloakClient implements KeycloakClientInterface {
       data.append("client_secret", this.config.credentials.clientSecret);
     }
 
-    // include openid scope so userinfo endpoint accepts the token
-    data.append("scope", "openid profile email");
+    // include configured scopes (default to openid/profile/email)
+    data.append("scope", KeycloakClient.scopesToString(this.config.scopes));
 
     const response = await this.httpProvider.post<any>(tokenUrl, data, {
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -83,8 +83,8 @@ export class KeycloakClient implements KeycloakClientInterface {
       ) {
         data.append("username", this.config.credentials.username);
         data.append("password", this.config.credentials.password);
-        // include openid scope for resource-owner password grants
-        data.append("scope", "openid profile email");
+        // include configured scopes for resource-owner password grants
+        data.append("scope", KeycloakClient.scopesToString(this.config.scopes));
       }
     }
 
@@ -164,5 +164,10 @@ export class KeycloakClient implements KeycloakClientInterface {
     return token.length <= visibleChars
       ? token
       : `${token.slice(0, visibleChars)}...`;
+  }
+
+  private static scopesToString(scopes?: string | string[]): string {
+    if (!scopes) return "openid profile email";
+    return Array.isArray(scopes) ? scopes.join(" ") : String(scopes);
   }
 }

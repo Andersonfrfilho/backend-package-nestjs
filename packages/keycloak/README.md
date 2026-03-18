@@ -72,6 +72,34 @@ Notas
 - Este módulo depende de `@adatechnology/http-client` (provider `HTTP_PROVIDER`) para realizar chamadas HTTP ao Keycloak. Configure o `HttpModule` conforme necessário na aplicação que consome este pacote.
 - O interceptor `KeycloakHttpInterceptor` é fornecido caso queira integrar com outras camadas que aceitem interceptors.
 
+## Autorização (decorator @Roles)
+
+O pacote agora fornece um decorator `@Roles()` e um `RolesGuard` para uso nas rotas do NestJS. Exemplos:
+
+```ts
+import { Controller, Get, UseGuards } from "@nestjs/common";
+import { Roles } from "@adatechnology/auth-keycloak";
+import { RolesGuard } from "@adatechnology/auth-keycloak";
+
+@Controller("secure")
+@UseGuards(RolesGuard)
+export class SecureController {
+  @Get("admin")
+  @Roles("admin") // aceita um ou mais roles (OR por padrão)
+  adminOnly() {
+    return { ok: true };
+  }
+
+  @Get("team")
+  @Roles({ roles: ["manager", "lead"], mode: "all" }) // requer ambos (AND)
+  teamOnly() {
+    return { ok: true };
+  }
+}
+```
+
+O `RolesGuard` extrai roles do payload do JWT (claims `realm_access.roles` e `resource_access[clientId].roles`). Por padrão o decorator verifica ambos (realm e client). Você pode ajustar o comportamento usando as opções `{ type: 'realm'|'client'|'both' }`.
+
 Contribuições
 
 Relate issues/PRs no repositório principal. Mantenha compatibilidade com o padrão usado pelo `HttpModule`.
