@@ -4,6 +4,7 @@ import {
   ExecutionContext,
   Inject,
   ForbiddenException,
+  Optional,
 } from "@nestjs/common";
 import { Reflector } from "@nestjs/core";
 import { ROLES_META_KEY, RolesOptions } from "./roles.decorator";
@@ -14,7 +15,7 @@ import type { KeycloakConfig } from "./keycloak.interface";
 export class RolesGuard implements CanActivate {
   constructor(
     private readonly reflector: Reflector,
-    @Inject(KEYCLOAK_CONFIG) private readonly config: KeycloakConfig,
+    @Optional() @Inject(KEYCLOAK_CONFIG) private readonly config?: KeycloakConfig,
   ) {}
 
   canActivate(context: ExecutionContext): boolean | Promise<boolean> {

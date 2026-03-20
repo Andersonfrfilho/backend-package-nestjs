@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, MiddlewareConsumer, NestModule } from '@nestjs/common';
 import { APP_INTERCEPTOR } from '@nestjs/core';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
@@ -7,13 +7,16 @@ import { HttpClientModule } from './http-client/http-client.module';
 import {
   KeycloakModule,
   KEYCLOAK_HTTP_INTERCEPTOR,
+  RolesGuard,
 } from '@adatechnology/auth-keycloak';
 import { SecureModule } from './secure/secure.module';
 import { KeycloakDemoModule } from './keycloak-demo/keycloak-demo.module';
+import { LoggerModule, RequestContextMiddleware } from '@adatechnology/logger';
 
 @Module({
   imports: [
     // register the example library with options
+    LoggerModule.forRoot(),
     ExampleModule.forRoot({ prefix: 'demo', enabled: true }),
     // example http-client demo module
     // demonstrates usage of the shared http-client package against jsonplaceholder
@@ -44,8 +47,13 @@ import { KeycloakDemoModule } from './keycloak-demo/keycloak-demo.module';
   controllers: [AppController],
   providers: [
     AppService,
+    RolesGuard,
     // register the Keycloak HTTP interceptor as a global interceptor (useExisting to reuse provider from KeycloakModule)
     { provide: APP_INTERCEPTOR, useExisting: KEYCLOAK_HTTP_INTERCEPTOR },
   ],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer) {
+    consumer.apply(RequestContextMiddleware).forRoutes('*');
+  }
+}

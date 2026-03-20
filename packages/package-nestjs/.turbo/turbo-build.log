@@ -1,4 +1,4 @@
 
-> @backend/package-nestjs@0.1.0 build /Users/anderson.filho/Documents/personal/backend-package-nestjs/packages/package-nestjs
+> @adatechnology/package-nestjs@0.1.0 build /Users/anderson.filho/Documents/personal/backend-package-nestjs/packages/package-nestjs
 > tsc -p tsconfig.json
 

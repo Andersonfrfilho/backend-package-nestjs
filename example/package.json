@@ -23,6 +23,7 @@
     "@adatechnology/auth-keycloak": "workspace:*",
     "@adatechnology/http-client": "workspace:*",
     "@adatechnology/package-nestjs": "workspace:*",
+    "@adatechnology/logger": "workspace:*",
     "@nestjs/common": "^11.1.16",
     "@nestjs/core": "^11.1.16",
     "@nestjs/platform-express": "^11.1.16",

@@ -100,6 +100,24 @@ export class SecureController {
 
 O `RolesGuard` extrai roles do payload do JWT (claims `realm_access.roles` e `resource_access[clientId].roles`). Por padrão o decorator verifica ambos (realm e client). Você pode ajustar o comportamento usando as opções `{ type: 'realm'|'client'|'both' }`.
 
+## Erros
+
+O pacote exporta `KeycloakError` (classe) que é usada para representar falhas nas chamadas HTTP ao Keycloak. A classe contém `statusCode` e `details` para permitir um tratamento declarativo dos erros na aplicação que consome a biblioteca. Exemplo:
+
+```ts
+import { KeycloakError } from "@adatechnology/auth-keycloak";
+
+try {
+  await keycloakClient.getUserInfo(token);
+} catch (e) {
+  if (e instanceof KeycloakError) {
+    // tratar problema específico de Keycloak
+    console.error(e.statusCode, e.details);
+  }
+  throw e;
+}
+```
+
 Contribuições
 
 Relate issues/PRs no repositório principal. Mantenha compatibilidade com o padrão usado pelo `HttpModule`.

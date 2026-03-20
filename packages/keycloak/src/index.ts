@@ -11,3 +11,4 @@ export type {
 } from "./keycloak.interface";
 export { Roles } from "./roles.decorator";
 export { RolesGuard } from "./roles.guard";
+export { KeycloakError } from "./errors/keycloak-error";
