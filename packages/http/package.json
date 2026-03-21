@@ -10,6 +10,7 @@
   "scripts": {
     "prebuild": "rm -rf dist",
     "build": "tsup",
+    "build:watch": "tsup --watch",
     "check": "tsc -p tsconfig.json --noEmit"
   },
   "peerDependencies": {

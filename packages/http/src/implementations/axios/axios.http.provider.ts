@@ -1,8 +1,18 @@
-import axios, { AxiosInstance, AxiosResponse } from "axios";
+import axios, {
+  AxiosError,
+  AxiosInstance,
+  AxiosResponse,
+  InternalAxiosRequestConfig,
+} from "axios";
+import { randomUUID } from "crypto";
 import { from, Observable } from "rxjs";
 
 import {
   ErrorInterceptor,
+  HttpExternalLogger,
+  HttpLogType,
+  HttpLoggingConfig,
+  HttpRequestLogContext,
   HttpProviderInterface,
   HttpRequestConfig,
   HttpResponse,
@@ -22,6 +32,17 @@ interface CacheEntry<T> {
   ttl: number;
 }
 
+interface AxiosHttpProviderOptions {
+  logger?: HttpExternalLogger;
+  logging?: HttpLoggingConfig;
+}
+
+const HTTP_CLIENT_LABEL = "@adatechnology/http-client@0.0.2";
+const ANSI_RED = "\x1b[31m";
+const ANSI_YELLOW = "\x1b[33m";
+const ANSI_BLUE = "\x1b[34m";
+const ANSI_RESET = "\x1b[0m";
+
 /**
  * Axios-based implementation of the HTTP provider interface.
  * Provides HTTP client functionality with both Promise and Observable APIs,
@@ -35,10 +56,372 @@ export class AxiosHttpProvider implements AxiosHttpProviderInterface {
   private responseInterceptorIds: Set<number> = new Set();
   private cache = new Map<string, CacheEntry<any>>();
   private cacheCleanupInterval?: ReturnType<typeof setInterval>;
+  private readonly logger?: HttpExternalLogger;
+  private readonly loggingConfig?: HttpLoggingConfig;
 
-  constructor(axiosInstance?: AxiosInstance) {
+  constructor(
+    axiosInstance?: AxiosInstance,
+    options?: AxiosHttpProviderOptions,
+  ) {
     this.axiosInstance = axiosInstance || axios.create();
+    this.logger = options?.logger;
+    this.loggingConfig = options?.logging;
+
+    this.setupHttpLoggingInterceptors();
     this.startCacheCleanup();
+  }
+
+  private setupHttpLoggingInterceptors(): void {
+    if (!this.isLoggingEnabled()) {
+      return;
+    }
+
+    this.axiosInstance.interceptors.request.use(
+      (config: InternalAxiosRequestConfig) => {
+        (config as any).__httpStartedAt = Date.now();
+
+        if (this.shouldLogType("request")) {
+          const logContext = this.extractLogContext(config);
+          this.emitLog("request", {
+            method: (config.method || "GET").toUpperCase(),
+            url: this.resolveRequestUrl(config),
+            source: this.buildSource(logContext),
+            requestId: logContext.requestId,
+            headers: this.loggingConfig?.includeHeaders
+              ? this.sanitizeHeaders(config.headers as Record<string, any>)
+              : undefined,
+            data: this.loggingConfig?.includeBody ? config.data : undefined,
+          });
+        }
+
+        return config;
+      },
+      (error: AxiosError) => {
+        if (this.shouldLogType("error")) {
+          this.emitLog("error", {
+            phase: "request",
+            message: error.message,
+            url: this.resolveRequestUrl(error.config),
+          });
+        }
+
+        return Promise.reject(error);
+      },
+    );
+
+    this.axiosInstance.interceptors.response.use(
+      (response: AxiosResponse) => {
+        if (this.shouldLogType("response")) {
+          const logContext = this.extractLogContext(response.config);
+          const startedAt = (response.config as any).__httpStartedAt;
+          const durationMs = startedAt ? Date.now() - startedAt : undefined;
+
+          this.emitLog("response", {
+            method: (response.config.method || "GET").toUpperCase(),
+            url: this.resolveRequestUrl(response.config),
+            source: this.buildSource(logContext),
+            requestId: logContext.requestId,
+            status: response.status,
+            durationMs,
+            headers: this.loggingConfig?.includeHeaders
+              ? this.sanitizeHeaders(response.headers as Record<string, any>)
+              : undefined,
+            data: this.loggingConfig?.includeBody ? response.data : undefined,
+          });
+        }
+
+        return response;
+      },
+      (error: AxiosError) => {
+        if (this.shouldLogType("error")) {
+          const cfg = error.config;
+          const logContext = this.extractLogContext(cfg);
+          const startedAt = (cfg as any)?.__httpStartedAt;
+          const durationMs = startedAt ? Date.now() - startedAt : undefined;
+
+          this.emitLog("error", {
+            phase: "response",
+            method: (cfg?.method || "GET").toUpperCase(),
+            url: this.resolveRequestUrl(cfg),
+            source: this.buildSource(logContext),
+            requestId: logContext.requestId,
+            status: error.response?.status,
+            durationMs,
+            message: error.message,
+            responseData: this.loggingConfig?.includeBody
+              ? error.response?.data
+              : undefined,
+          });
+        }
+
+        return Promise.reject(error);
+      },
+    );
+  }
+
+  private isLoggingEnabled(): boolean {
+    if (!this.loggingConfig?.enabled) {
+      return false;
+    }
+
+    const envs = this.loggingConfig.environments;
+    if (!envs || envs.length === 0) {
+      return true;
+    }
+
+    const currentEnv = process.env.NODE_ENV || "development";
+    return envs.includes(currentEnv);
+  }
+
+  private shouldLogType(type: HttpLogType): boolean {
+    if (!this.isLoggingEnabled()) {
+      return false;
+    }
+
+    const types = this.loggingConfig?.types;
+    if (!types || types.length === 0) {
+      return true;
+    }
+
+    return types.includes(type);
+  }
+
+  private emitLog(type: HttpLogType, meta?: Record<string, any>): void {
+    const context = this.loggingConfig?.context || HTTP_CLIENT_LABEL;
+    const message = this.buildLogMessage(type, meta?.source, meta?.requestId);
+    const normalizedMeta = this.normalizeMetaForLogging(meta);
+
+    if (this.logger) {
+      if (type === "error") {
+        this.logger.error?.({ message, context, meta: normalizedMeta });
+        return;
+      }
+
+      this.logger.info?.({ message, context, meta: normalizedMeta });
+      return;
+    }
+
+    if (type === "error") {
+      console.error(message, { context, ...normalizedMeta });
+      return;
+    }
+
+    console.log(message, { context, ...normalizedMeta });
+  }
+
+  private buildLogMessage(
+    type: HttpLogType,
+    source?: string,
+    requestId?: string,
+  ): string {
+    const typeLabel = String(type).toLowerCase();
+    const requestIdLabel = requestId || "no-request-id";
+    const prefix =
+      source && typeof source === "string"
+        ? `[${requestIdLabel}][${typeLabel}][${source}]`
+        : `[${requestIdLabel}][${typeLabel}]`;
+
+    const baseMessage = `${prefix} - ${HTTP_CLIENT_LABEL}`;
+
+    if (type === "error") {
+      return `${ANSI_RED}${baseMessage}${ANSI_RESET}`;
+    }
+
+    if (type === "response") {
+      return `${ANSI_YELLOW}${baseMessage}${ANSI_RESET}`;
+    }
+
+    if (type === "request") {
+      return `${ANSI_BLUE}${baseMessage}${ANSI_RESET}`;
+    }
+
+    return baseMessage;
+  }
+
+  private normalizeMetaForLogging(
+    meta?: Record<string, any>,
+  ): Record<string, any> | undefined {
+    if (!meta) {
+      return undefined;
+    }
+
+    const entries = Object.entries(meta)
+      .filter(([, value]) => value !== undefined)
+      .map(([key, value]) => [key, this.normalizeMetaValue(key, value)]);
+
+    return Object.fromEntries(entries);
+  }
+
+  private normalizeMetaValue(key: string, value: any): any {
+    if (value === undefined || value === null) {
+      return value;
+    }
+
+    if (key === "data" || key === "responseData") {
+      return this.stringifyForLog(value);
+    }
+
+    if (typeof value === "object" && !Array.isArray(value)) {
+      const cleanedEntries = Object.entries(value).filter(
+        ([, v]) => v !== undefined,
+      );
+      return Object.fromEntries(cleanedEntries);
+    }
+
+    return value;
+  }
+
+  private stringifyForLog(value: any): string {
+    if (typeof value === "string") {
+      return value;
+    }
+
+    try {
+      return JSON.stringify(value);
+    } catch (error) {
+      return String(value);
+    }
+  }
+
+  private resolveRequestUrl(config?: {
+    baseURL?: string;
+    url?: string;
+  }): string {
+    if (!config?.url) {
+      return "";
+    }
+
+    if (!config.baseURL) {
+      return config.url;
+    }
+
+    if (/^https?:\/\//i.test(config.url)) {
+      return config.url;
+    }
+
+    return `${config.baseURL}${config.url}`;
+  }
+
+  private sanitizeHeaders(
+    headers?: Record<string, any>,
+  ): Record<string, any> | undefined {
+    if (!headers) {
+      return undefined;
+    }
+
+    const sanitized = { ...headers };
+    const authorization =
+      sanitized.Authorization || sanitized.authorization || undefined;
+
+    if (authorization && typeof authorization === "string") {
+      const token = authorization.includes(" ")
+        ? authorization.split(" ").slice(1).join(" ")
+        : authorization;
+      const prefix = authorization.includes(" ")
+        ? `${authorization.split(" ")[0]} `
+        : "";
+
+      const masked = `${prefix}${AxiosHttpProvider.maskToken(token, 6)}`;
+
+      if (sanitized.Authorization) {
+        sanitized.Authorization = masked;
+      }
+
+      if (sanitized.authorization) {
+        sanitized.authorization = masked;
+      }
+    }
+
+    return sanitized;
+  }
+
+  private extractLogContext(config?: any): HttpRequestLogContext {
+    const requestLogContext = (config?.logContext ||
+      {}) as HttpRequestLogContext;
+
+    const requestIdHeaderName = this.getRequestIdHeaderName();
+    const requestIdFromHeader = this.getHeaderValue(
+      config,
+      requestIdHeaderName,
+    );
+
+    let resolvedRequestId = requestLogContext.requestId || requestIdFromHeader;
+
+    if (!resolvedRequestId && this.shouldAutoGenerateRequestId()) {
+      resolvedRequestId = randomUUID();
+      this.setHeaderValue(config, requestIdHeaderName, resolvedRequestId);
+    }
+
+    return {
+      className: requestLogContext.className,
+      methodName: requestLogContext.methodName,
+      requestId: resolvedRequestId,
+    };
+  }
+
+  private getRequestIdHeaderName(): string {
+    return this.loggingConfig?.requestId?.headerName || "x-request-id";
+  }
+
+  private shouldAutoGenerateRequestId(): boolean {
+    return Boolean(this.loggingConfig?.requestId?.autoGenerateIfMissing);
+  }
+
+  private getHeaderValue(config: any, headerName: string): string | undefined {
+    const headers = config?.headers;
+    if (!headers) {
+      return undefined;
+    }
+
+    if (typeof headers.get === "function") {
+      const val = headers.get(headerName);
+      return typeof val === "string" ? val : undefined;
+    }
+
+    const normalizedName = headerName.toLowerCase();
+    const entries = Object.entries(headers as Record<string, any>);
+    for (const [key, value] of entries) {
+      if (key.toLowerCase() === normalizedName && typeof value === "string") {
+        return value;
+      }
+    }
+
+    return undefined;
+  }
+
+  private setHeaderValue(config: any, headerName: string, value: string): void {
+    if (!config) {
+      return;
+    }
+
+    const headers = config.headers;
+    if (!headers) {
+      config.headers = { [headerName]: value };
+      return;
+    }
+
+    if (typeof headers.set === "function") {
+      headers.set(headerName, value);
+      return;
+    }
+
+    (headers as Record<string, any>)[headerName] = value;
+  }
+
+  private buildSource(logContext: HttpRequestLogContext): string | undefined {
+    if (logContext.className && logContext.methodName) {
+      return `${logContext.className}.${logContext.methodName}`;
+    }
+
+    if (logContext.className) {
+      return logContext.className;
+    }
+
+    if (logContext.methodName) {
+      return logContext.methodName;
+    }
+
+    return undefined;
   }
 
   /**
@@ -587,16 +970,24 @@ export class AxiosHttpProvider implements AxiosHttpProviderInterface {
       // Map to a normalized application error with context
       try {
         // lazy import to avoid circular deps at runtime - use local mapper
-        const { ErrorMapperService } = require("../../errors/error-mapper.service");
+        const {
+          ErrorMapperService,
+        } = require("../../errors/error-mapper.service");
         const { HttpClientError } = require("../../errors/http-client-error");
         const mapper = new ErrorMapperService();
         const mapped = mapper.mapUpstreamError(processedError);
-        throw new HttpClientError(mapped.message, mapped.status, mapped.code, mapped.context);
+        throw new HttpClientError(
+          mapped.message,
+          mapped.status,
+          mapped.code,
+          mapped.context,
+        );
       } catch (mapErr) {
         // If mapping fails, rethrow a generic HttpClientError with minimal context
         const { HttpClientError } = require("../../errors/http-client-error");
         const fallback = new HttpClientError(
-          (processedError && (processedError as any).message) || 'HTTP client error',
+          (processedError && (processedError as any).message) ||
+            "HTTP client error",
           (processedError && (processedError as any).status) || 502,
           (processedError && (processedError as any).code) || undefined,
           { original: String(processedError) },

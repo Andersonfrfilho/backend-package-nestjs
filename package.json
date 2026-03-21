@@ -28,6 +28,7 @@
     "docs:build": "vitepress build docs",
     "docs:preview": "vitepress preview docs --port 4173",
     "example:start": "pnpm --filter example run start",
+    "example:start:dev": "pnpm --filter @adatechnology/http-client run build:watch & pnpm --filter @adatechnology/logger run build:watch & pnpm --filter @adatechnology/auth-keycloak run build:watch & pnpm --filter @adatechnology/package-nestjs run build:watch & pnpm --filter example run start:dev",
     "watch:packages": "pnpm -r --parallel run build:watch"
   },
   "peerDependencies": {

@@ -94,6 +94,27 @@ Use a forma explícita se for adicionar múltiplos drivers (fetch, node-http) no
 - ✅ Tipagem TypeScript completa
 - ✅ Baseado em Axios (robusto e bem testado)
 
+## Logs com contexto de origem (classe, método e requestId)
+
+Quando o `HttpModule` estiver com logging habilitado, você pode enviar contexto por requisição usando `logContext`:
+
+```ts
+await this.http.get("/users", {
+  logContext: {
+    className: "UserService",
+    methodName: "findAll",
+    requestId: "req-123",
+  },
+});
+```
+
+No log, isso sai como:
+
+- `source`: `UserService.findAll`
+- `requestId`: `req-123`
+
+Se `requestId` não for informado em `logContext`, o módulo tenta usar automaticamente o header `x-request-id`.
+
 ## Instalação e Configuração
 
 O provider HTTP já está integrado no sistema de providers do projeto. Para usar, basta injetar o `HTTP_PROVIDER` no seu serviço:

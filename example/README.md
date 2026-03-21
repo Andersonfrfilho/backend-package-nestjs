@@ -25,6 +25,39 @@
 
 [Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
 
+## Exemplo completo do módulo HTTP
+
+O projeto `example` já está configurado para demonstrar o pacote `@adatechnology/http-client` com logs.
+
+### Como está configurado
+
+- `LoggerModule.forRoot()` ativo no `AppModule`.
+- `RequestContextMiddleware` ativo para incluir `requestId` no contexto.
+- `HttpModule.forRoot(...)` no `HttpClientModule` com `logging` habilitado para `development` e `test`.
+
+### Endpoints de demonstração
+
+Base: `http://localhost:3000/http-client`
+
+- `GET /pokemon` → lista pokémons com `logContext` (`className` e `methodName`).
+- `GET /pokemon/:id` → busca um pokémon por id com `logContext`.
+- `GET /pokemon/:id/with-request-id` → aceita header `x-request-id` e envia no `logContext`.
+- `GET /code-samples` → retorna snippets de configuração (`forRoot`, `interceptors`, `logContext`).
+
+### Exemplo de uso de `logContext`
+
+```ts
+await this.http.get('/pokemon/1', {
+  logContext: {
+    className: 'PokemonService',
+    methodName: 'findOne',
+    requestId: 'req-123',
+  },
+});
+```
+
+Com isso, os logs do HTTP passam a conter metadados de origem da chamada (`source`) e correlação (`requestId`).
+
 ## Project setup
 
 ```bash

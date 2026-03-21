@@ -25,6 +25,73 @@ export enum ContentType {
 }
 
 /**
+ * Tipos de logs suportados no cliente HTTP.
+ */
+export type HttpLogType = "request" | "response" | "error";
+
+/**
+ * Contrato mínimo para um logger externo.
+ * Compatível com @adatechnology/logger e outros loggers com interface parecida.
+ */
+export interface HttpExternalLogger {
+  debug?(payload: {
+    message: string;
+    context?: string;
+    meta?: Record<string, any>;
+  }): void;
+  info?(payload: {
+    message: string;
+    context?: string;
+    meta?: Record<string, any>;
+  }): void;
+  warn?(payload: {
+    message: string;
+    context?: string;
+    meta?: Record<string, any>;
+  }): void;
+  error?(payload: {
+    message: string;
+    context?: string;
+    meta?: Record<string, any>;
+  }): void;
+}
+
+/**
+ * Configuração de logs do módulo HTTP.
+ */
+export interface HttpLoggingConfig {
+  enabled?: boolean;
+  /** Ambientes permitidos (ex.: ["development", "staging"]). */
+  environments?: string[];
+  /** Tipos de log habilitados. Padrão: request, response e error. */
+  types?: HttpLogType[];
+  /** Inclui headers no log (com mascaramento básico de Authorization). */
+  includeHeaders?: boolean;
+  /** Inclui payload/data da requisição e resposta no log. */
+  includeBody?: boolean;
+  /** Contexto exibido no logger. */
+  context?: string;
+  /** Configuração do requestId para correlação de logs. */
+  requestId?: {
+    /**
+     * Quando true, gera requestId automaticamente caso não venha em logContext/header.
+     */
+    autoGenerateIfMissing?: boolean;
+    /** Nome do header usado para requestId. Padrão: x-request-id. */
+    headerName?: string;
+  };
+}
+
+/**
+ * Contexto opcional da origem da chamada para enriquecer logs HTTP.
+ */
+export interface HttpRequestLogContext {
+  className?: string;
+  methodName?: string;
+  requestId?: string;
+}
+
+/**
  * HTTP request configuration
  */
 export interface HttpRequestConfig {
@@ -41,6 +108,10 @@ export interface HttpRequestConfig {
   retryDelay?: number;
   cache?: boolean; // Enable/disable caching for this request
   cacheTtl?: number; // Cache TTL in milliseconds
+  /**
+   * Metadados opcionais para logging (origem da chamada e requestId).
+   */
+  logContext?: HttpRequestLogContext;
 }
 
 /**

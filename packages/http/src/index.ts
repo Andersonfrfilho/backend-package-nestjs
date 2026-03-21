@@ -5,4 +5,11 @@ export {
   HTTP_AXIOS_PROVIDER,
   HTTP_AXIOS_CONNECTION,
 } from "./http.token";
-export type { HttpProviderInterface } from "./http.interface";
+export type {
+  HttpProviderInterface,
+  HttpExternalLogger,
+  HttpLoggingConfig,
+  HttpLogType,
+} from "./http.interface";
+export { HttpMethod, ContentType } from "./http.interface";
+export type { HttpModuleOptions } from "./http.module";
