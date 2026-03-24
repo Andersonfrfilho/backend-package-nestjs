@@ -1,10 +1,17 @@
+import {
+  HTTP_ERRORS,
+  HTTP_ERROR_MESSAGES,
+  INTERNAL_FRAME_RE,
+} from "./errors.constants";
+import type { ErrorContext } from "./errors.interfaces";
+
 export class ErrorMapperService {
   mapUpstreamError(err: unknown) {
     if (err && (err as any).status && (err as any).message) return err;
 
     try {
       const anyErr: any = err as any;
-      const context: any = {};
+      const context: ErrorContext = {};
 
       if (anyErr?.config) {
         context.url = anyErr.config.url || anyErr.config.baseURL;
@@ -21,23 +28,45 @@ export class ErrorMapperService {
       }
 
       if (anyErr?.response) {
-        const status = anyErr.response.status || 502;
-        const message = anyErr.response.data?.message || anyErr.message || 'Upstream error';
+        const status = anyErr.response.status || HTTP_ERRORS.DEFAULT_STATUS;
+        const message =
+          anyErr.response.data?.message ||
+          anyErr.message ||
+          HTTP_ERROR_MESSAGES.UPSTREAM_ERROR;
         return { message, status, code: anyErr.code, context };
       }
 
       if (anyErr?.request) {
-        return { message: 'No response from upstream service', status: 502, code: anyErr.code, context };
+        return {
+          message: HTTP_ERROR_MESSAGES.NO_RESPONSE,
+          status: HTTP_ERRORS.DEFAULT_STATUS,
+          code: anyErr.code,
+          context,
+        };
       }
 
-      return { message: (anyErr && anyErr.message) || 'Unexpected error', status: 500, code: anyErr?.code, context };
+      return {
+        message:
+          (anyErr && anyErr.message) || HTTP_ERROR_MESSAGES.UNEXPECTED_ERROR,
+        status: HTTP_ERRORS.INTERNAL_STATUS,
+        code: anyErr?.code,
+        context,
+      };
     } catch (e) {
-      return { message: 'Error mapping failure', status: 500, code: undefined, context: { original: String(err) } };
+      return {
+        message: HTTP_ERROR_MESSAGES.MAPPING_FAILURE,
+        status: HTTP_ERRORS.INTERNAL_STATUS,
+        code: undefined,
+        context: { original: String(err) },
+      };
     }
   }
 
   private parseStack(stack: string) {
-    const lines = stack.split('\n').map((l) => l.trim()).filter(Boolean);
+    const lines = stack
+      .split("\n")
+      .map((l) => l.trim())
+      .filter(Boolean);
     const frames: Array<any> = [];
     const re = /^at\s+(?:(.*?)\s+\()?(.*?):(\d+):(\d+)\)?$/;
     for (const line of lines) {
@@ -55,6 +84,6 @@ export class ErrorMapperService {
 
   private isInternalFrame(file?: string) {
     if (!file) return false;
-    return /node_modules|internal|axios/.test(file);
+    return INTERNAL_FRAME_RE.test(file);
   }
 }

@@ -13,7 +13,9 @@ import { KeycloakModule } from '@adatechnology/auth-keycloak';
         clientId: process.env.KEYCLOAK_CLIENT_ID || 'example-client',
         clientSecret: process.env.KEYCLOAK_CLIENT_SECRET || '',
         grantType:
-          process.env.KEYCLOAK_GRANT_TYPE === 'password' ? 'password' : 'client_credentials',
+          process.env.KEYCLOAK_GRANT_TYPE === 'password'
+            ? 'password'
+            : 'client_credentials',
       },
     }),
   ],

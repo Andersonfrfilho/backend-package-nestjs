@@ -14,7 +14,11 @@ import {
 } from '@nestjs/common';
 import { Observable } from 'rxjs';
 import { Inject } from '@nestjs/common';
-import { HTTP_PROVIDER, HttpMethod } from '@adatechnology/http-client';
+import {
+  HTTP_PROVIDER,
+  HttpMethod,
+  UseHttpRequestId,
+} from '@adatechnology/http-client';
 import type { HttpProviderInterface } from '@adatechnology/http-client';
 
 let lastRequestInterceptorId: number | null = null;
@@ -22,6 +26,7 @@ let lastResponseInterceptorId: number | null = null;
 let lastErrorInterceptorId: number | null = null;
 
 @Controller('http-client')
+@UseHttpRequestId()
 export class HttpClientController {
   constructor(
     @Inject(HTTP_PROVIDER) private readonly http: HttpProviderInterface,
@@ -143,6 +148,25 @@ export class HttpClientController {
         methodName: this.requestObservable.name,
       },
     });
+  }
+
+  @Get('demo/decorator-controller')
+  async demoDecoratorController() {
+    const res = await this.http.get('/pokemon/1');
+    return {
+      decoratorScope: 'controller',
+      pokemon: res.data,
+    };
+  }
+
+  @Get('demo/decorator-method')
+  @UseHttpRequestId({ headerName: 'x-request-id', autoGenerateIfMissing: true })
+  async demoDecoratorMethod() {
+    const res = await this.http.get('/pokemon/2');
+    return {
+      decoratorScope: 'method',
+      pokemon: res.data,
+    };
   }
 
   @Post('set-base-url')

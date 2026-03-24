@@ -23,3 +23,5 @@ export class LoggerModule {
     };
   }
 }
+
+export { LOGGER_PROVIDER } from "./logger.token";

@@ -17,7 +17,10 @@ export class AppController {
     // use example library to compute prefix
     const prefix = this.exampleService?.getPrefix?.() ?? 'unknown';
     const enabled = this.exampleService?.isEnabled?.() ?? false;
-    this.logger?.info?.({ message: 'getHello called', meta: { prefix, enabled } });
+    this.logger?.info?.({
+      message: 'getHello called',
+      meta: { prefix, enabled },
+    });
     return `Hello from ${prefix} (enabled=${enabled})`;
   }
 }

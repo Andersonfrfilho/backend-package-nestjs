@@ -10,38 +10,34 @@ import { from, Observable } from "rxjs";
 import {
   ErrorInterceptor,
   HttpExternalLogger,
-  HttpLogType,
   HttpLoggingConfig,
+  HttpLogType,
   HttpRequestLogContext,
-  HttpProviderInterface,
   HttpRequestConfig,
   HttpResponse,
+  HttpMethod,
 } from "../../http.interface";
+import { getHttpRequestContext } from "../../context/http-request-context.service";
+import { ErrorMapperService } from "../../errors/error-mapper.service";
+import { HttpClientError } from "../../errors/http-client-error";
 
-/**
- * Interface for Axios HTTP Provider
- */
-export interface AxiosHttpProviderInterface extends HttpProviderInterface {}
+import {
+  AxiosHttpProviderInterface,
+  CacheEntry,
+} from "./axios.http.interfaces";
+import { AxiosHttpProviderOptions } from "./axios.http.types";
+import {
+  HTTP_CLIENT_LABEL,
+  ANSI_RED,
+  ANSI_YELLOW,
+  ANSI_BLUE,
+  ANSI_RESET,
+  HEADERS_PARAMS,
+  NO_REQUEST_ID_LABEL,
+} from "./axios.http.constants";
+import { RequestMethod } from "@nestjs/common";
 
-/**
- * Simple cache entry
- */
-interface CacheEntry<T> {
-  data: T;
-  timestamp: number;
-  ttl: number;
-}
-
-interface AxiosHttpProviderOptions {
-  logger?: HttpExternalLogger;
-  logging?: HttpLoggingConfig;
-}
-
-const HTTP_CLIENT_LABEL = "@adatechnology/http-client@0.0.2";
-const ANSI_RED = "\x1b[31m";
-const ANSI_YELLOW = "\x1b[33m";
-const ANSI_BLUE = "\x1b[34m";
-const ANSI_RESET = "\x1b[0m";
+/** constants, interfaces and types are moved to dedicated files */
 
 /**
  * Axios-based implementation of the HTTP provider interface.
@@ -83,7 +79,7 @@ export class AxiosHttpProvider implements AxiosHttpProviderInterface {
         if (this.shouldLogType("request")) {
           const logContext = this.extractLogContext(config);
           this.emitLog("request", {
-            method: (config.method || "GET").toUpperCase(),
+            method: (config.method || HttpMethod.GET).toUpperCase(),
             url: this.resolveRequestUrl(config),
             source: this.buildSource(logContext),
             requestId: logContext.requestId,
@@ -117,7 +113,7 @@ export class AxiosHttpProvider implements AxiosHttpProviderInterface {
           const durationMs = startedAt ? Date.now() - startedAt : undefined;
 
           this.emitLog("response", {
-            method: (response.config.method || "GET").toUpperCase(),
+            method: (response.config.method || HttpMethod.GET).toUpperCase(),
             url: this.resolveRequestUrl(response.config),
             source: this.buildSource(logContext),
             requestId: logContext.requestId,
@@ -141,7 +137,7 @@ export class AxiosHttpProvider implements AxiosHttpProviderInterface {
 
           this.emitLog("error", {
             phase: "response",
-            method: (cfg?.method || "GET").toUpperCase(),
+            method: (cfg?.method || HttpMethod.GET).toUpperCase(),
             url: this.resolveRequestUrl(cfg),
             source: this.buildSource(logContext),
             requestId: logContext.requestId,
@@ -215,7 +211,7 @@ export class AxiosHttpProvider implements AxiosHttpProviderInterface {
     requestId?: string,
   ): string {
     const typeLabel = String(type).toLowerCase();
-    const requestIdLabel = requestId || "no-request-id";
+    const requestIdLabel = requestId || NO_REQUEST_ID_LABEL;
     const prefix =
       source && typeof source === "string"
         ? `[${requestIdLabel}][${typeLabel}][${source}]`
@@ -338,36 +334,50 @@ export class AxiosHttpProvider implements AxiosHttpProviderInterface {
   private extractLogContext(config?: any): HttpRequestLogContext {
     const requestLogContext = (config?.logContext ||
       {}) as HttpRequestLogContext;
+    const decoratorContext = getHttpRequestContext();
 
     const requestIdHeaderName = this.getRequestIdHeaderName();
-    const requestIdFromHeader = this.getHeaderValue(
+    const requestIdFromHeader = this.getHeaderValue({
       config,
-      requestIdHeaderName,
-    );
+      headerName: requestIdHeaderName,
+    });
 
-    let resolvedRequestId = requestLogContext.requestId || requestIdFromHeader;
+    let resolvedRequestId =
+      requestLogContext.requestId ||
+      requestIdFromHeader ||
+      decoratorContext?.requestId;
 
     if (!resolvedRequestId && this.shouldAutoGenerateRequestId()) {
       resolvedRequestId = randomUUID();
-      this.setHeaderValue(config, requestIdHeaderName, resolvedRequestId);
+      this.setHeaderValue({
+        config,
+        headerName: requestIdHeaderName,
+        value: resolvedRequestId,
+      });
     }
 
     return {
-      className: requestLogContext.className,
-      methodName: requestLogContext.methodName,
+      className: requestLogContext.className || decoratorContext?.className,
+      methodName: requestLogContext.methodName || decoratorContext?.methodName,
       requestId: resolvedRequestId,
     };
   }
 
   private getRequestIdHeaderName(): string {
-    return this.loggingConfig?.requestId?.headerName || "x-request-id";
+    return this.loggingConfig?.requestId?.headerName || HEADERS_PARAMS.REQUEST_ID;
   }
 
   private shouldAutoGenerateRequestId(): boolean {
     return Boolean(this.loggingConfig?.requestId?.autoGenerateIfMissing);
   }
 
-  private getHeaderValue(config: any, headerName: string): string | undefined {
+  private getHeaderValue({
+    config,
+    headerName,
+  }: {
+    config: any;
+    headerName: string;
+  }): string | undefined {
     const headers = config?.headers;
     if (!headers) {
       return undefined;
@@ -389,7 +399,15 @@ export class AxiosHttpProvider implements AxiosHttpProviderInterface {
     return undefined;
   }
 
-  private setHeaderValue(config: any, headerName: string, value: string): void {
+  private setHeaderValue({
+    config,
+    headerName,
+    value,
+  }: {
+    config: any;
+    headerName: string;
+    value: string;
+  }): void {
     if (!config) {
       return;
     }
@@ -969,29 +987,24 @@ export class AxiosHttpProvider implements AxiosHttpProviderInterface {
       const processedError = await this.processErrorInterceptors(error);
       // Map to a normalized application error with context
       try {
-        // lazy import to avoid circular deps at runtime - use local mapper
-        const {
-          ErrorMapperService,
-        } = require("../../errors/error-mapper.service");
-        const { HttpClientError } = require("../../errors/http-client-error");
         const mapper = new ErrorMapperService();
-        const mapped = mapper.mapUpstreamError(processedError);
-        throw new HttpClientError(
-          mapped.message,
-          mapped.status,
-          mapped.code,
-          mapped.context,
-        );
+        const mapped = mapper.mapUpstreamError(processedError) as any;
+        throw new HttpClientError({
+          message: mapped.message,
+          status: mapped.status,
+          code: mapped.code,
+          context: mapped.context,
+        });
       } catch (mapErr) {
         // If mapping fails, rethrow a generic HttpClientError with minimal context
-        const { HttpClientError } = require("../../errors/http-client-error");
-        const fallback = new HttpClientError(
-          (processedError && (processedError as any).message) ||
+        const fallback = new HttpClientError({
+          message:
+            (processedError && (processedError as any).message) ||
             "HTTP client error",
-          (processedError && (processedError as any).status) || 502,
-          (processedError && (processedError as any).code) || undefined,
-          { original: String(processedError) },
-        );
+          status: (processedError && (processedError as any).status) || 502,
+          code: (processedError && (processedError as any).code) || undefined,
+          context: { original: String(processedError) },
+        });
         throw fallback;
       }
     }

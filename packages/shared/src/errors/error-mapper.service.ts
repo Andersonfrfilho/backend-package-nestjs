@@ -1,5 +1,7 @@
 import { Injectable } from "@nestjs/common";
-import { BaseAppError, ErrorContext } from "./base-app-error";
+import { BaseAppError } from "./base-app-error";
+import type { ErrorContext, BaseAppErrorParams } from "./errors.interfaces";
+import { SHARED_ERRORS, SHARED_ERROR_MESSAGES, SHARED_INTERNAL_FRAME_RE } from "./errors.constants";
 
 @Injectable()
 export class ErrorMapperService {
@@ -34,26 +36,59 @@ export class ErrorMapperService {
       }
 
       if (anyErr?.response) {
-        const status = anyErr.response.status || 502;
-        const message = anyErr.response.data?.message || anyErr.message || 'Upstream error';
-        return new BaseAppError(message, status, anyErr.code ?? undefined, context);
+        const status = anyErr.response.status || SHARED_ERRORS.DEFAULT_STATUS;
+        const message =
+          anyErr.response.data?.message ||
+          anyErr.message ||
+          SHARED_ERROR_MESSAGES.UPSTREAM_ERROR;
+        return new BaseAppError({
+          message,
+          status,
+          code: anyErr.code ?? undefined,
+          context,
+        } as BaseAppErrorParams);
       }
 
       if (anyErr?.request) {
         // no response received
-        return new BaseAppError('No response from upstream service', 502, anyErr.code ?? undefined, context);
+        return new BaseAppError({
+          message: SHARED_ERROR_MESSAGES.NO_RESPONSE,
+          status: SHARED_ERRORS.DEFAULT_STATUS,
+          code: anyErr.code ?? undefined,
+          context,
+        } as BaseAppErrorParams);
       }
 
       // Fallback generic error
-      return new BaseAppError((anyErr && anyErr.message) || 'Unexpected error', 500, anyErr?.code, context);
+      return new BaseAppError({
+        message:
+          (anyErr && anyErr.message) || SHARED_ERROR_MESSAGES.UNEXPECTED_ERROR,
+        status: SHARED_ERRORS.INTERNAL_STATUS,
+        code: anyErr?.code,
+        context,
+      } as BaseAppErrorParams);
     } catch (e) {
-      return new BaseAppError('Error mapping failure', 500, undefined, { original: String(err) });
+      return new BaseAppError({
+        message: SHARED_ERROR_MESSAGES.MAPPING_FAILURE,
+        status: SHARED_ERRORS.INTERNAL_STATUS,
+        context: { original: String(err) },
+      } as BaseAppErrorParams);
     }
   }
 
-  private parseStack(stack: string): Array<{ fn?: string; file?: string; line?: number; column?: number }> {
-    const lines = stack.split('\n').map((l) => l.trim()).filter(Boolean);
-    const frames: Array<{ fn?: string; file?: string; line?: number; column?: number }> = [];
+  private parseStack(
+    stack: string,
+  ): Array<{ fn?: string; file?: string; line?: number; column?: number }> {
+    const lines = stack
+      .split("\n")
+      .map((l) => l.trim())
+      .filter(Boolean);
+    const frames: Array<{
+      fn?: string;
+      file?: string;
+      line?: number;
+      column?: number;
+    }> = [];
     const re = /^at\s+(?:(.*?)\s+\()?(.*?):(\d+):(\d+)\)?$/;
     for (const line of lines) {
       const m = re.exec(line);
@@ -70,6 +105,6 @@ export class ErrorMapperService {
 
   private isInternalFrame(file?: string): boolean {
     if (!file) return false;
-    return /node_modules|internal|\(internal|axios|packages\/http|@adatechnology\/http-client/.test(file);
+    return SHARED_INTERNAL_FRAME_RE.test(file);
   }
 }

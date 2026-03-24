@@ -14,6 +14,43 @@ A ideia é você conseguir visualizar no terminal da aplicação:
 >
 > O `requestId` também está com geração automática habilitada quando o header `x-request-id` não é enviado.
 
+## Responsabilidade do requestId (recomendado)
+
+- A aplicação (camada de entrada HTTP) deve ser a fonte de verdade do `requestId`.
+- O `http-client` deve propagar esse valor nas chamadas externas e nos próprios logs.
+- A geração automática no `http-client` serve como fallback para não ficar sem correlação.
+
+Na prática:
+
+1. middleware/interceptor do app lê `x-request-id` (ou gera);
+2. logger do app usa esse mesmo `requestId`;
+3. `http-client` usa esse mesmo `requestId` no header e nos logs.
+
+## Decorator disponível na lib: `@UseHttpRequestId()`
+
+O `@adatechnology/http-client` agora disponibiliza o decorator `UseHttpRequestId`.
+
+- Em **controller**: aplica para todas as rotas do controller.
+- Em **método**: aplica somente para a rota específica.
+
+Exemplo no `example`:
+
+```ts
+import { UseHttpRequestId } from '@adatechnology/http-client';
+
+@Controller('http-client')
+@UseHttpRequestId()
+export class HttpClientController {}
+```
+
+Exemplo em rota específica:
+
+```ts
+@Get('pokemon/:id')
+@UseHttpRequestId()
+async getOne() {}
+```
+
 ## 1) Pré-requisitos
 
 - Dependências instaladas no monorepo.
@@ -63,7 +100,13 @@ curl -i \
 - `source` parecido com `HttpClientController.getOneWithRequestId`
 - `requestId: req-manual-001`
 
-Se você não enviar o header, o módulo gera um `requestId` automaticamente.
+Se você não enviar o header, o `@UseHttpRequestId()` do controller garante geração/propagação automática.
+
+Teste rápido sem header:
+
+```bash
+curl -i http://localhost:3000/http-client/pokemon/1/with-request-id
+```
 
 ---
 
@@ -119,6 +162,18 @@ curl -i http://localhost:3000/http-client/request-observable
 ```
 
 Nos dois casos, você deve ver logs de `HTTP:REQUEST` e `HTTP:RESPONSE`.
+
+### Demo do decorator no controller e no método
+
+```bash
+# decorator aplicado no controller inteiro
+curl -i http://localhost:3000/http-client/demo/decorator-controller
+
+# decorator aplicado explicitamente no método
+curl -i http://localhost:3000/http-client/demo/decorator-method
+```
+
+Nos dois casos, você deve ver `requestId` no prefixo dos logs do `http-client`.
 
 ---
 
@@ -217,6 +272,19 @@ curl -i -X POST http://localhost:3000/http-client/clear-cache
 
 ## 12) Dicas de diagnóstico
 
+### Teste manual de correlação (app + http-client)
+
+Objetivo: validar que logs da aplicação e logs do `http-client` compartilham o mesmo `requestId`.
+
+```bash
+curl -i -H "x-request-id: req-correlation-001" http://localhost:3000/http-client/pokemon/1/with-request-id
+```
+
+No terminal, você deve procurar o mesmo `req-correlation-001` em:
+
+- logs de aplicação (seus serviços/controllers)
+- logs do `http-client` (`request`/`response`/`error`)
+
 ### Não apareceu log?
 
 1. Confira se você subiu com `start:dev`.
@@ -233,6 +301,16 @@ curl -i -X POST http://localhost:3000/http-client/clear-cache
 curl -i -H "x-request-id: req-xyz-123" http://localhost:3000/http-client/pokemon/1/with-request-id
 ```
 
+### Decorator na lib (já disponível)
+
+A lib já disponibiliza um decorator para uso em rota específica ou controller inteiro, por exemplo:
+
+- `@UseHttpRequestId()` em método
+- `@UseHttpRequestId()` no controller
+
+Esse decorator pode forçar/propagar o `requestId` para chamadas do `http-client` automaticamente.
+Mesmo assim, a recomendação continua sendo manter o app como dono do `requestId` (governança central de correlação).
+
 ---
 
 ## 13) Resumo rápido de comandos
@@ -246,6 +324,9 @@ curl -i http://localhost:3000/http-client/pokemon
 
 # request + response + requestId
 curl -i -H "x-request-id: req-manual-001" http://localhost:3000/http-client/pokemon/1/with-request-id
+
+# correlação app + http-client
+curl -i -H "x-request-id: req-correlation-001" http://localhost:3000/http-client/pokemon/1/with-request-id
 
 # erro
 curl -i http://localhost:3000/http-client/pokemon/abc/with-request-id

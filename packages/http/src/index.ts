@@ -13,3 +13,6 @@ export type {
 } from "./http.interface";
 export { HttpMethod, ContentType } from "./http.interface";
 export type { HttpModuleOptions } from "./http.module";
+export { UseHttpRequestId } from "./request-id/use-http-request-id.decorator";
+export { HttpRequestIdInterceptor } from "./request-id/http-request-id.interceptor";
+export type { HttpRequestIdOptions } from "./request-id/http-request-id.types";

@@ -15,7 +15,9 @@ import type { KeycloakConfig } from "./keycloak.interface";
 export class RolesGuard implements CanActivate {
   constructor(
     private readonly reflector: Reflector,
-    @Optional() @Inject(KEYCLOAK_CONFIG) private readonly config?: KeycloakConfig,
+    @Optional()
+    @Inject(KEYCLOAK_CONFIG)
+    private readonly config?: KeycloakConfig,
   ) {}
 
   canActivate(context: ExecutionContext): boolean | Promise<boolean> {
