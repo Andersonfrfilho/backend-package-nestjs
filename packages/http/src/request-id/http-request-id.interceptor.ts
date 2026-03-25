@@ -13,7 +13,11 @@ import {
   HTTP_REQUEST_ID_METADATA,
   HEADERS_PARAMS,
 } from "./http-request-id.constants";
-import { HttpRequestIdOptions } from "./http-request-id.types";
+import {
+  HttpRequestIdOptions,
+  ExtractRequestIdParams,
+  GetHeaderCaseInsensitiveParams,
+} from "./http-request-id.types";
 
 @Injectable()
 export class HttpRequestIdInterceptor implements NestInterceptor {
@@ -72,10 +76,7 @@ export class HttpRequestIdInterceptor implements NestInterceptor {
   private extractRequestIdFromHeaders({
     headers,
     options,
-  }: {
-    headers: Record<string, any> | undefined;
-    options: HttpRequestIdOptions;
-  }): string | undefined {
+  }: ExtractRequestIdParams): string | undefined {
     if (!headers) {
       return undefined;
     }
@@ -85,24 +86,27 @@ export class HttpRequestIdInterceptor implements NestInterceptor {
       ...(options.fallbackHeaderNames || []),
     ];
 
-    for (const name of names) {
-      const value = this.getHeaderCaseInsensitive(headers, name);
-      if (typeof value === "string" && value.trim().length > 0) {
-        return value;
+    for (const headerName of names) {
+      const headerValue = this.getHeaderCaseInsensitive({
+        headers,
+        name: headerName,
+      });
+      if (typeof headerValue === "string" && headerValue.trim().length > 0) {
+        return headerValue;
       }
     }
 
     return undefined;
   }
 
-  private getHeaderCaseInsensitive(
-    headers: Record<string, any>,
-    name: string,
-  ): any {
-    const desired = name.toLowerCase();
-    for (const [k, v] of Object.entries(headers)) {
-      if (k.toLowerCase() === desired) {
-        return v;
+  private getHeaderCaseInsensitive({
+    headers,
+    name,
+  }: GetHeaderCaseInsensitiveParams): any {
+    const desiredLower = name.toLowerCase();
+    for (const [headerName, headerValue] of Object.entries(headers)) {
+      if (headerName.toLowerCase() === desiredLower) {
+        return headerValue;
       }
     }
     return undefined;

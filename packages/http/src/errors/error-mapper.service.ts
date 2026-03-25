@@ -7,49 +7,67 @@ import type { ErrorContext } from "./errors.interfaces";
 
 export class ErrorMapperService {
   mapUpstreamError(err: unknown) {
-    if (err && (err as any).status && (err as any).message) return err;
+    if (
+      err &&
+      typeof (err as Record<string, unknown>).status !== "undefined" &&
+      typeof (err as Record<string, unknown>).message !== "undefined"
+    )
+      return err;
 
     try {
-      const anyErr: any = err as any;
+      const obj = (err as Record<string, unknown>) ?? {};
       const context: ErrorContext = {};
 
-      if (anyErr?.config) {
-        context.url = anyErr.config.url || anyErr.config.baseURL;
-        context.method = anyErr.config.method;
+      if (obj?.config && typeof obj.config === "object") {
+        const cfg = obj.config as Record<string, unknown>;
+        context.url = (cfg.url as string) || (cfg.baseURL as string);
+        context.method = cfg.method as string | undefined;
       }
 
-      if (anyErr?.stack) {
-        const frames = this.parseStack(anyErr.stack);
+      if (obj?.stack && typeof obj.stack === "string") {
+        const frames = this.parseStack(obj.stack);
         if (frames.length) {
-          context.stack = frames;
+          context.stack = frames as unknown as ErrorContext["stack"];
           const origin = frames.find((f) => !this.isInternalFrame(f.file));
-          if (origin) context.origin = origin;
+          if (origin)
+            context.origin = origin as unknown as ErrorContext["origin"];
         }
       }
 
-      if (anyErr?.response) {
-        const status = anyErr.response.status || HTTP_ERRORS.DEFAULT_STATUS;
+      if (obj?.response && typeof obj.response === "object") {
+        const resp = obj.response as Record<string, unknown>;
+        const status =
+          typeof resp.status === "number"
+            ? (resp.status as number)
+            : HTTP_ERRORS.DEFAULT_STATUS;
         const message =
-          anyErr.response.data?.message ||
-          anyErr.message ||
+          (resp.data &&
+            ((resp.data as Record<string, unknown>).message as string)) ||
+          (obj.message as string) ||
           HTTP_ERROR_MESSAGES.UPSTREAM_ERROR;
-        return { message, status, code: anyErr.code, context };
+        return {
+          message,
+          status,
+          code: obj.code as string | undefined,
+          context,
+        };
       }
 
-      if (anyErr?.request) {
+      if (obj?.request) {
         return {
           message: HTTP_ERROR_MESSAGES.NO_RESPONSE,
           status: HTTP_ERRORS.DEFAULT_STATUS,
-          code: anyErr.code,
+          code: obj.code as string | undefined,
           context,
         };
       }
 
       return {
         message:
-          (anyErr && anyErr.message) || HTTP_ERROR_MESSAGES.UNEXPECTED_ERROR,
+          (obj && (obj.message as string)) ||
+          HTTP_ERROR_MESSAGES.UNEXPECTED_ERROR,
         status: HTTP_ERRORS.INTERNAL_STATUS,
-        code: anyErr?.code,
+        code: obj?.code as string | undefined,
         context,
       };
     } catch (e) {
@@ -67,7 +85,12 @@ export class ErrorMapperService {
       .split("\n")
       .map((l) => l.trim())
       .filter(Boolean);
-    const frames: Array<any> = [];
+    const frames: Array<{
+      fn?: string;
+      file?: string;
+      line?: number;
+      column?: number;
+    }> = [];
     const re = /^at\s+(?:(.*?)\s+\()?(.*?):(\d+):(\d+)\)?$/;
     for (const line of lines) {
       const m = re.exec(line);

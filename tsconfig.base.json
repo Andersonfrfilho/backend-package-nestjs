@@ -15,6 +15,8 @@
       "@adatechnology/package-nestjs/*": ["packages/package-nestjs/src/*"],
       "@adatechnology/http-client": ["packages/http/src"],
       "@adatechnology/http-client/*": ["packages/http/src/*"],
+      "@adatechnology/logger": ["packages/logger/src"],
+      "@adatechnology/logger/*": ["packages/logger/src/*"],
       "@adatechnology/auth-keycloak": ["packages/keycloak/src"],
       "@adatechnology/auth-keycloak/*": ["packages/keycloak/src/*"],
       "@adatechnology/shared": ["packages/shared/src"],

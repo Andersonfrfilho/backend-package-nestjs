@@ -37,22 +37,22 @@ export interface HttpExternalLogger {
   debug?(payload: {
     message: string;
     context?: string;
-    meta?: Record<string, any>;
+    meta?: Record<string, unknown>;
   }): void;
   info?(payload: {
     message: string;
     context?: string;
-    meta?: Record<string, any>;
+    meta?: Record<string, unknown>;
   }): void;
   warn?(payload: {
     message: string;
     context?: string;
-    meta?: Record<string, any>;
+    meta?: Record<string, unknown>;
   }): void;
   error?(payload: {
     message: string;
     context?: string;
-    meta?: Record<string, any>;
+    meta?: Record<string, unknown>;
   }): void;
 }
 
@@ -98,8 +98,8 @@ export interface HttpRequestConfig {
   url: string;
   method?: HttpMethod;
   headers?: Record<string, string>;
-  params?: Record<string, any>;
-  data?: any;
+  params?: Record<string, unknown>;
+  data?: unknown;
   timeout?: number;
   contentType?: ContentType;
   responseType?: "json" | "text" | "blob" | "arraybuffer";
@@ -117,13 +117,13 @@ export interface HttpRequestConfig {
 /**
  * HTTP response structure
  */
-export interface HttpResponse<T = any> {
+export interface HttpResponse<T = unknown> {
   data: T;
   status: number;
   statusText: string;
   headers: Record<string, string>;
   config: HttpRequestConfig;
-  request?: any;
+  request?: unknown;
 }
 
 /**
@@ -141,7 +141,7 @@ export interface HttpError extends Error {
 /**
  * Error interceptor function
  */
-export type ErrorInterceptor = (error: any) => any;
+export type ErrorInterceptor = (error: unknown) => unknown;
 
 /**
  * HTTP provider interface
@@ -150,71 +150,71 @@ export interface HttpProviderInterface {
   /**
    * Make a GET request
    */
-  get<T = any>(
-    url: string,
-    config?: Omit<HttpRequestConfig, "url" | "method">,
-  ): Promise<HttpResponse<T>>;
+  get<T = unknown>(params: {
+    url: string;
+    config?: Omit<HttpRequestConfig, "url" | "method">;
+  }): Promise<HttpResponse<T>>;
 
   /**
    * Make a POST request
    */
-  post<T = any>(
-    url: string,
-    data?: any,
-    config?: Omit<HttpRequestConfig, "url" | "method" | "data">,
-  ): Promise<HttpResponse<T>>;
+  post<T = unknown>(params: {
+    url: string;
+    data?: unknown;
+    config?: Omit<HttpRequestConfig, "url" | "method" | "data">;
+  }): Promise<HttpResponse<T>>;
 
   /**
    * Make a PUT request
    */
-  put<T = any>(
-    url: string,
-    data?: any,
-    config?: Omit<HttpRequestConfig, "url" | "method" | "data">,
-  ): Promise<HttpResponse<T>>;
+  put<T = unknown>(params: {
+    url: string;
+    data?: unknown;
+    config?: Omit<HttpRequestConfig, "url" | "method" | "data">;
+  }): Promise<HttpResponse<T>>;
 
   /**
    * Make a PATCH request
    */
-  patch<T = any>(
-    url: string,
-    data?: any,
-    config?: Omit<HttpRequestConfig, "url" | "method" | "data">,
-  ): Promise<HttpResponse<T>>;
+  patch<T = unknown>(params: {
+    url: string;
+    data?: unknown;
+    config?: Omit<HttpRequestConfig, "url" | "method" | "data">;
+  }): Promise<HttpResponse<T>>;
 
   /**
    * Make a DELETE request
    */
-  delete<T = any>(
-    url: string,
-    config?: Omit<HttpRequestConfig, "url" | "method">,
-  ): Promise<HttpResponse<T>>;
+  delete<T = unknown>(params: {
+    url: string;
+    config?: Omit<HttpRequestConfig, "url" | "method">;
+  }): Promise<HttpResponse<T>>;
 
   /**
    * Make a HEAD request
    */
-  head<T = any>(
-    url: string,
-    config?: Omit<HttpRequestConfig, "url" | "method">,
-  ): Promise<HttpResponse<T>>;
+  head<T = unknown>(params: {
+    url: string;
+    config?: Omit<HttpRequestConfig, "url" | "method">;
+  }): Promise<HttpResponse<T>>;
 
   /**
    * Make an OPTIONS request
    */
-  options<T = any>(
-    url: string,
-    config?: Omit<HttpRequestConfig, "url" | "method">,
-  ): Promise<HttpResponse<T>>;
+  options<T = unknown>(params: {
+    url: string;
+    config?: Omit<HttpRequestConfig, "url" | "method">;
+  }): Promise<HttpResponse<T>>;
 
   /**
    * Make a generic HTTP request
    */
-  request<T = any>(config: HttpRequestConfig): Promise<HttpResponse<T>>;
+  request<T = unknown>(config: HttpRequestConfig): Promise<HttpResponse<T>>;
 
   /**
    * Set global headers
    */
-  setGlobalHeader(key: string, value: string): void;
+  setGlobalHeader(params: { key: string; value: string }): void;
 
   /**
    * Remove global header
@@ -259,7 +259,7 @@ export interface HttpProviderInterface {
   /**
    * Set authorization token
    */
-  setAuthToken(token: string, type?: string): void;
+  setAuthToken(params: { token: string; type?: string }): void;
 
   /**
    * Clear authorization token
@@ -270,8 +270,8 @@ export interface HttpProviderInterface {
    * Add request interceptor
    */
   addRequestInterceptor(
-    onFulfilled: (config: any) => any,
-    onRejected?: (error: any) => any,
+    onFulfilled: (config: unknown) => unknown,
+    onRejected?: (error: unknown) => unknown,
   ): number;
 
   /**
@@ -283,8 +283,8 @@ export interface HttpProviderInterface {
    * Add response interceptor
    */
   addResponseInterceptor(
-    onFulfilled: (response: any) => any,
-    onRejected?: (error: any) => any,
+    onFulfilled: (response: unknown) => unknown,
+    onRejected?: (error: unknown) => unknown,
   ): number;
 
   /**
@@ -295,36 +295,36 @@ export interface HttpProviderInterface {
   /**
    * Observable version for reactive programming
    */
-  get$<T = any>(
-    url: string,
-    config?: Omit<HttpRequestConfig, "url" | "method">,
-  ): Observable<HttpResponse<T>>;
-  post$<T = any>(
-    url: string,
-    data?: any,
-    config?: Omit<HttpRequestConfig, "url" | "method" | "data">,
-  ): Observable<HttpResponse<T>>;
-  put$<T = any>(
-    url: string,
-    data?: any,
-    config?: Omit<HttpRequestConfig, "url" | "method" | "data">,
-  ): Observable<HttpResponse<T>>;
-  patch$<T = any>(
-    url: string,
-    data?: any,
-    config?: Omit<HttpRequestConfig, "url" | "method" | "data">,
-  ): Observable<HttpResponse<T>>;
-  delete$<T = any>(
-    url: string,
-    config?: Omit<HttpRequestConfig, "url" | "method">,
-  ): Observable<HttpResponse<T>>;
-  head$<T = any>(
-    url: string,
-    config?: Omit<HttpRequestConfig, "url" | "method">,
-  ): Observable<HttpResponse<T>>;
-  options$<T = any>(
-    url: string,
-    config?: Omit<HttpRequestConfig, "url" | "method">,
-  ): Observable<HttpResponse<T>>;
-  request$<T = any>(config: HttpRequestConfig): Observable<HttpResponse<T>>;
+  get$<T = unknown>(params: {
+    url: string;
+    config?: Omit<HttpRequestConfig, "url" | "method">;
+  }): Observable<HttpResponse<T>>;
+  post$<T = unknown>(params: {
+    url: string;
+    data?: unknown;
+    config?: Omit<HttpRequestConfig, "url" | "method" | "data">;
+  }): Observable<HttpResponse<T>>;
+  put$<T = unknown>(params: {
+    url: string;
+    data?: unknown;
+    config?: Omit<HttpRequestConfig, "url" | "method" | "data">;
+  }): Observable<HttpResponse<T>>;
+  patch$<T = unknown>(params: {
+    url: string;
+    data?: unknown;
+    config?: Omit<HttpRequestConfig, "url" | "method" | "data">;
+  }): Observable<HttpResponse<T>>;
+  delete$<T = unknown>(params: {
+    url: string;
+    config?: Omit<HttpRequestConfig, "url" | "method">;
+  }): Observable<HttpResponse<T>>;
+  head$<T = unknown>(params: {
+    url: string;
+    config?: Omit<HttpRequestConfig, "url" | "method">;
+  }): Observable<HttpResponse<T>>;
+  options$<T = unknown>(params: {
+    url: string;
+    config?: Omit<HttpRequestConfig, "url" | "method">;
+  }): Observable<HttpResponse<T>>;
+  request$<T = unknown>(config: HttpRequestConfig): Observable<HttpResponse<T>>;
 }

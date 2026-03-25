@@ -4,7 +4,21 @@ export const HEADERS_PARAMS = {
   REQUEST_ID: "x-request-id",
   FALLBACKS: ["x-correlation-id"],
   NO_REQUEST_ID_LABEL: "no-request-id",
+  AUTHORIZATION: "Authorization",
 };
+export const AUTH_SCHEME = {
+  BEARER: "Bearer",
+};
+
+export const DEFAULTS = {
+  CACHE_TTL: 300000, // 5 minutes
+  STATUS_TEXT_OK: "OK",
+};
+export const LOG_TYPES = {
+  REQUEST: "request",
+  RESPONSE: "response",
+  ERROR: "error",
+} as const;
 
 export const ANSI_COLORS = {
   ERROR: "\x1b[31m",

@@ -8,6 +8,12 @@ import {
   HttpResponse,
 } from "./http.interface";
 import type { AxiosHttpProviderInterface } from "./implementations/axios/axios.http.provider";
+import {
+  UrlConfig,
+  UrlDataConfig,
+  SetGlobalHeaderParams,
+  SetAuthTokenParams,
+} from "./implementations/axios/types/axios.http.params";
 import { HTTP_AXIOS_PROVIDER } from "./http.token";
 
 @Injectable()
@@ -21,120 +27,179 @@ export class HttpProvider implements HttpProviderInterface {
    * Expose underlying axios instance when available from the axios provider implementation.
    * This is intentionally typed as unknown/any to avoid leaking implementation details.
    */
-  getAxiosInstance(): any | undefined {
+  getAxiosInstance(): unknown | undefined {
     try {
       // Some implementations expose `axiosInstance` or `instance`.
       // Use brute-force access guarded in try/catch to avoid runtime errors.
 
-      const provider: any = this.axiosHttpProvider as any;
-      return provider?.axiosInstance ?? provider?.instance ?? undefined;
+      const provider = this.axiosHttpProvider as unknown as Record<
+        string,
+        unknown
+      >;
+      return (provider?.axiosInstance ?? provider?.instance) as
+        | unknown
+        | undefined;
     } catch (e) {
       return undefined;
     }
   }
 
   async get<T>(
-    url: string,
+    urlOrParams: string | UrlConfig,
     config?: HttpRequestConfig,
   ): Promise<HttpResponse<T>> {
-    return this.axiosHttpProvider.get<T>(url, config);
+    if (typeof urlOrParams === "string") {
+      return this.axiosHttpProvider.get<T>({ url: urlOrParams, config });
+    }
+    return this.axiosHttpProvider.get<T>(urlOrParams);
   }
 
   get$<T>(
-    url: string,
+    urlOrParams: string | UrlConfig,
     config?: HttpRequestConfig,
   ): Observable<HttpResponse<T>> {
-    return this.axiosHttpProvider.get$<T>(url, config);
+    if (typeof urlOrParams === "string") {
+      return this.axiosHttpProvider.get$<T>({ url: urlOrParams, config });
+    }
+    return this.axiosHttpProvider.get$<T>(urlOrParams);
   }
 
   async post<T>(
-    url: string,
-    data?: any,
+    urlOrParams: string | UrlDataConfig,
+    data?: unknown,
     config?: HttpRequestConfig,
   ): Promise<HttpResponse<T>> {
-    return this.axiosHttpProvider.post<T>(url, data, config);
+    if (typeof urlOrParams === "string") {
+      return this.axiosHttpProvider.post<T>({ url: urlOrParams, data, config });
+    }
+    return this.axiosHttpProvider.post<T>(urlOrParams);
   }
 
   post$<T>(
-    url: string,
-    data?: any,
+    urlOrParams: string | UrlDataConfig,
+    data?: unknown,
     config?: HttpRequestConfig,
   ): Observable<HttpResponse<T>> {
-    return this.axiosHttpProvider.post$<T>(url, data, config);
+    if (typeof urlOrParams === "string") {
+      return this.axiosHttpProvider.post$<T>({
+        url: urlOrParams,
+        data,
+        config,
+      });
+    }
+    return this.axiosHttpProvider.post$<T>(urlOrParams);
   }
 
   async put<T>(
-    url: string,
-    data?: any,
+    urlOrParams: string | UrlDataConfig,
+    data?: unknown,
     config?: HttpRequestConfig,
   ): Promise<HttpResponse<T>> {
-    return this.axiosHttpProvider.put<T>(url, data, config);
+    if (typeof urlOrParams === "string") {
+      return this.axiosHttpProvider.put<T>({ url: urlOrParams, data, config });
+    }
+    return this.axiosHttpProvider.put<T>(urlOrParams);
   }
 
   put$<T>(
-    url: string,
-    data?: any,
+    urlOrParams: string | UrlDataConfig,
+    data?: unknown,
     config?: HttpRequestConfig,
   ): Observable<HttpResponse<T>> {
-    return this.axiosHttpProvider.put$<T>(url, data, config);
+    if (typeof urlOrParams === "string") {
+      return this.axiosHttpProvider.put$<T>({ url: urlOrParams, data, config });
+    }
+    return this.axiosHttpProvider.put$<T>(urlOrParams);
   }
 
   async patch<T>(
-    url: string,
-    data?: any,
+    urlOrParams: string | UrlDataConfig,
+    data?: unknown,
     config?: HttpRequestConfig,
   ): Promise<HttpResponse<T>> {
-    return this.axiosHttpProvider.patch<T>(url, data, config);
+    if (typeof urlOrParams === "string") {
+      return this.axiosHttpProvider.patch<T>({
+        url: urlOrParams,
+        data,
+        config,
+      });
+    }
+    return this.axiosHttpProvider.patch<T>(urlOrParams);
   }
 
   patch$<T>(
-    url: string,
-    data?: any,
+    urlOrParams: string | UrlDataConfig,
+    data?: unknown,
     config?: HttpRequestConfig,
   ): Observable<HttpResponse<T>> {
-    return this.axiosHttpProvider.patch$<T>(url, data, config);
+    if (typeof urlOrParams === "string") {
+      return this.axiosHttpProvider.patch$<T>({
+        url: urlOrParams,
+        data,
+        config,
+      });
+    }
+    return this.axiosHttpProvider.patch$<T>(urlOrParams);
   }
 
   async delete<T>(
-    url: string,
+    urlOrParams: string | UrlConfig,
     config?: HttpRequestConfig,
   ): Promise<HttpResponse<T>> {
-    return this.axiosHttpProvider.delete<T>(url, config);
+    if (typeof urlOrParams === "string") {
+      return this.axiosHttpProvider.delete<T>({ url: urlOrParams, config });
+    }
+    return this.axiosHttpProvider.delete<T>(urlOrParams);
   }
 
   delete$<T>(
-    url: string,
+    urlOrParams: string | UrlConfig,
     config?: HttpRequestConfig,
   ): Observable<HttpResponse<T>> {
-    return this.axiosHttpProvider.delete$<T>(url, config);
+    if (typeof urlOrParams === "string") {
+      return this.axiosHttpProvider.delete$<T>({ url: urlOrParams, config });
+    }
+    return this.axiosHttpProvider.delete$<T>(urlOrParams);
   }
 
   async head<T>(
-    url: string,
+    urlOrParams: string | UrlConfig,
     config?: HttpRequestConfig,
   ): Promise<HttpResponse<T>> {
-    return this.axiosHttpProvider.head<T>(url, config);
+    if (typeof urlOrParams === "string") {
+      return this.axiosHttpProvider.head<T>({ url: urlOrParams, config });
+    }
+    return this.axiosHttpProvider.head<T>(urlOrParams);
   }
 
   head$<T>(
-    url: string,
+    urlOrParams: string | UrlConfig,
     config?: HttpRequestConfig,
   ): Observable<HttpResponse<T>> {
-    return this.axiosHttpProvider.head$<T>(url, config);
+    if (typeof urlOrParams === "string") {
+      return this.axiosHttpProvider.head$<T>({ url: urlOrParams, config });
+    }
+    return this.axiosHttpProvider.head$<T>(urlOrParams);
   }
 
   async options<T>(
-    url: string,
+    urlOrParams: string | UrlConfig,
     config?: HttpRequestConfig,
   ): Promise<HttpResponse<T>> {
-    return this.axiosHttpProvider.options<T>(url, config);
+    if (typeof urlOrParams === "string") {
+      return this.axiosHttpProvider.options<T>({ url: urlOrParams, config });
+    }
+    return this.axiosHttpProvider.options<T>(urlOrParams);
   }
 
   options$<T>(
-    url: string,
+    urlOrParams: string | UrlConfig,
     config?: HttpRequestConfig,
   ): Observable<HttpResponse<T>> {
-    return this.axiosHttpProvider.options$<T>(url, config);
+    if (typeof urlOrParams === "string") {
+      return this.axiosHttpProvider.options$<T>({ url: urlOrParams, config });
+    }
+    return this.axiosHttpProvider.options$<T>(urlOrParams);
   }
 
   async request<T>(config: HttpRequestConfig): Promise<HttpResponse<T>> {
@@ -145,8 +210,21 @@ export class HttpProvider implements HttpProviderInterface {
     return this.axiosHttpProvider.request$<T>(config);
   }
 
-  setGlobalHeader(key: string, value: string): void {
-    this.axiosHttpProvider.setGlobalHeader(key, value);
+  setGlobalHeader(params: { key: string; value: string }): void;
+  setGlobalHeader(key: string, value: string): void;
+  setGlobalHeader(
+    keyOrParams: string | SetGlobalHeaderParams,
+    value?: string,
+  ): void {
+    if (typeof keyOrParams === "string") {
+      this.axiosHttpProvider.setGlobalHeader({
+        key: keyOrParams,
+        value: value!,
+      });
+      return;
+    }
+
+    this.axiosHttpProvider.setGlobalHeader(keyOrParams);
   }
 
   removeGlobalHeader(key: string): void {
@@ -181,8 +259,18 @@ export class HttpProvider implements HttpProviderInterface {
     this.axiosHttpProvider.clearCache(key);
   }
 
-  setAuthToken(token: string, type?: string): void {
-    this.axiosHttpProvider.setAuthToken(token, type);
+  setAuthToken(params: { token: string; type?: string }): void;
+  setAuthToken(token: string, type?: string): void;
+  setAuthToken(
+    tokenOrParams: string | SetAuthTokenParams,
+    type?: string,
+  ): void {
+    if (typeof tokenOrParams === "string") {
+      this.axiosHttpProvider.setAuthToken({ token: tokenOrParams, type });
+      return;
+    }
+
+    this.axiosHttpProvider.setAuthToken(tokenOrParams);
   }
 
   clearAuthToken(): void {
@@ -190,8 +278,8 @@ export class HttpProvider implements HttpProviderInterface {
   }
 
   addRequestInterceptor(
-    onFulfilled: (config: any) => any,
-    onRejected?: (error: any) => any,
+    onFulfilled: (config: unknown) => unknown,
+    onRejected?: (error: unknown) => unknown,
   ): number {
     return this.axiosHttpProvider.addRequestInterceptor(
       onFulfilled,
@@ -204,8 +292,8 @@ export class HttpProvider implements HttpProviderInterface {
   }
 
   addResponseInterceptor(
-    onFulfilled: (response: any) => any,
-    onRejected?: (error: any) => any,
+    onFulfilled: (response: unknown) => unknown,
+    onRejected?: (error: unknown) => unknown,
   ): number {
     return this.axiosHttpProvider.addResponseInterceptor(
       onFulfilled,

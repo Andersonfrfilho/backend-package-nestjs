@@ -1,7 +1,11 @@
 import { Injectable } from "@nestjs/common";
 import { BaseAppError } from "./base-app-error";
 import type { ErrorContext, BaseAppErrorParams } from "./errors.interfaces";
-import { SHARED_ERRORS, SHARED_ERROR_MESSAGES, SHARED_INTERNAL_FRAME_RE } from "./errors.constants";
+import {
+  SHARED_ERRORS,
+  SHARED_ERROR_MESSAGES,
+  SHARED_INTERNAL_FRAME_RE,
+} from "./errors.constants";
 
 @Injectable()
 export class ErrorMapperService {
@@ -14,47 +18,66 @@ export class ErrorMapperService {
     if (err instanceof BaseAppError) return err;
 
     try {
-      // Axios-like error shape
-      const anyErr: any = err as any;
+      // Treat incoming error as an unknown object and narrow properties safely
+      const obj = (err as Record<string, unknown> | undefined) ?? undefined;
 
       const context: ErrorContext = {};
 
       // attach parsed stack frames to context for tracing origin
-      if (anyErr?.stack) {
-        const frames = this.parseStack(anyErr.stack);
+      if (obj && typeof obj.stack === "string") {
+        const frames = this.parseStack(obj.stack);
         if (frames.length) {
-          context.stack = frames;
+          context.stack = frames as unknown as ErrorContext["stack"];
           // first non-internal frame as origin
           const origin = frames.find((f) => !this.isInternalFrame(f.file));
-          if (origin) context.origin = origin;
+          if (origin)
+            context.origin = origin as unknown as ErrorContext["origin"];
         }
       }
 
-      if (anyErr?.config) {
-        context.url = anyErr.config.url || anyErr.config.baseURL || undefined;
-        context.method = anyErr.config.method;
+      if (obj && typeof obj.config === "object" && obj.config !== null) {
+        const cfg = obj.config as Record<string, unknown>;
+        context.url =
+          typeof cfg.url === "string"
+            ? (cfg.url as string)
+            : typeof cfg.baseURL === "string"
+              ? (cfg.baseURL as string)
+              : undefined;
+        context.method =
+          typeof cfg.method === "string" ? (cfg.method as string) : undefined;
       }
 
-      if (anyErr?.response) {
-        const status = anyErr.response.status || SHARED_ERRORS.DEFAULT_STATUS;
+      if (obj && typeof obj.response === "object" && obj.response !== null) {
+        const resp = obj.response as Record<string, unknown>;
+        const status =
+          typeof resp.status === "number"
+            ? (resp.status as number)
+            : SHARED_ERRORS.DEFAULT_STATUS;
+        const data = resp.data as Record<string, unknown> | undefined;
         const message =
-          anyErr.response.data?.message ||
-          anyErr.message ||
-          SHARED_ERROR_MESSAGES.UPSTREAM_ERROR;
+          data && typeof data.message === "string"
+            ? (data.message as string)
+            : typeof obj.message === "string"
+              ? (obj.message as string)
+              : SHARED_ERROR_MESSAGES.UPSTREAM_ERROR;
+        const code =
+          typeof obj.code === "string" ? (obj.code as string) : undefined;
         return new BaseAppError({
           message,
           status,
-          code: anyErr.code ?? undefined,
+          code,
           context,
         } as BaseAppErrorParams);
       }
 
-      if (anyErr?.request) {
+      if (obj && typeof obj.request === "object") {
         // no response received
+        const code =
+          typeof obj.code === "string" ? (obj.code as string) : undefined;
         return new BaseAppError({
           message: SHARED_ERROR_MESSAGES.NO_RESPONSE,
           status: SHARED_ERRORS.DEFAULT_STATUS,
-          code: anyErr.code ?? undefined,
+          code,
           context,
         } as BaseAppErrorParams);
       }
@@ -62,9 +85,11 @@ export class ErrorMapperService {
       // Fallback generic error
       return new BaseAppError({
         message:
-          (anyErr && anyErr.message) || SHARED_ERROR_MESSAGES.UNEXPECTED_ERROR,
+          obj && typeof obj.message === "string"
+            ? (obj.message as string)
+            : SHARED_ERROR_MESSAGES.UNEXPECTED_ERROR,
         status: SHARED_ERRORS.INTERNAL_STATUS,
-        code: anyErr?.code,
+        code: typeof obj?.code === "string" ? (obj.code as string) : undefined,
         context,
       } as BaseAppErrorParams);
     } catch (e) {

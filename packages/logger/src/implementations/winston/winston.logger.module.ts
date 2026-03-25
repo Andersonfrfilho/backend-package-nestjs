@@ -1,8 +1,13 @@
 import { DynamicModule, Module } from "@nestjs/common";
 import { createLogger, format, transports, LoggerOptions } from "winston";
 import { WinstonLoggerProvider } from "./winston.logger.provider";
-import { WINSTON_LOGGER } from "./winston.logger.token";
+import {
+  WINSTON_LOGGER,
+  WINSTON_RAW,
+  WINSTON_OBFUSCATOR,
+} from "./winston.logger.token";
 import { WinstonModuleConfig } from "./winston.logger.types";
+import { DEFAULT_LOG_LEVEL } from "./winston.logger.constants";
 import { buildDefaultObfuscator } from "../../obfuscator";
 
 @Module({})
@@ -16,7 +21,7 @@ export class WinstonImplementationModule {
     );
 
     const defaultOptions: LoggerOptions = {
-      level: (process.env.LOG_LEVEL as any) || "info",
+      level: (process.env.LOG_LEVEL as any) || DEFAULT_LOG_LEVEL,
       format: defaultFormat,
       transports: [
         new transports.Console({
@@ -40,9 +45,16 @@ export class WinstonImplementationModule {
       module: WinstonImplementationModule,
       providers: [
         {
+          provide: WINSTON_RAW,
+          useValue: winstonLogger,
+        },
+        {
+          provide: WINSTON_OBFUSCATOR,
+          useValue: obfuscator,
+        },
+        {
           provide: WINSTON_LOGGER,
-          useFactory: () =>
-            new WinstonLoggerProvider(winstonLogger, obfuscator),
+          useClass: WinstonLoggerProvider,
         },
       ],
       exports: [WINSTON_LOGGER],

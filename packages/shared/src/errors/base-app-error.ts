@@ -11,8 +11,11 @@ export class BaseAppError<Context = ErrorContext> extends Error {
     this.status = params.status;
     this.code = params.code;
     this.context = params.context;
-    // Error.captureStackTrace is a V8/Node extension — guard and cast to any
-    // to avoid TypeScript errors in environments that don't expose it.
-    (Error as any).captureStackTrace?.(this, this.constructor as any);
+    // Error.captureStackTrace is a V8/Node extension — guard and narrow its type
+    // to avoid using `any` while still calling it when available.
+    const capturable = Error as unknown as {
+      captureStackTrace?: (err: Error, ctor?: Function) => void;
+    };
+    capturable.captureStackTrace?.(this, this.constructor as Function);
   }
 }

@@ -3,13 +3,13 @@ import {
   CanActivate,
   ExecutionContext,
   Inject,
-  ForbiddenException,
   Optional,
 } from "@nestjs/common";
 import { Reflector } from "@nestjs/core";
 import { ROLES_META_KEY, RolesOptions } from "./roles.decorator";
 import { KEYCLOAK_CONFIG } from "./keycloak.token";
 import type { KeycloakConfig } from "./keycloak.interface";
+import { BaseAppError } from "@adatechnology/shared";
 
 @Injectable()
 export class RolesGuard implements CanActivate {
@@ -34,7 +34,12 @@ export class RolesGuard implements CanActivate {
       : req.query?.token;
 
     if (!token)
-      throw new ForbiddenException("Authorization token not provided");
+      throw new BaseAppError({
+        message: "Authorization token not provided",
+        status: 403,
+        code: "FORBIDDEN_MISSING_TOKEN",
+        context: {},
+      });
 
     const payload = this.decodeJwtPayload(token);
 
@@ -58,9 +63,11 @@ export class RolesGuard implements CanActivate {
 
     // also consider all client roles if type is 'both' and resource_access exists
     if (meta.type === "both" && payload?.resource_access) {
-      Object.values(payload.resource_access).forEach((entry: any) => {
+      Object.values(payload.resource_access).forEach((entry) => {
         if (entry?.roles && Array.isArray(entry.roles)) {
-          entry.roles.forEach((r: string) => availableRoles.add(r));
+          (entry.roles as string[]).forEach((r: string) =>
+            availableRoles.add(r),
+          );
         }
       });
     }
@@ -72,21 +79,35 @@ export class RolesGuard implements CanActivate {
     const result =
       meta.mode === "all" ? hasMatch.every(Boolean) : hasMatch.some(Boolean);
 
-    if (!result) throw new ForbiddenException("Insufficient roles");
+    if (!result)
+      throw new BaseAppError({
+        message: "Insufficient roles",
+        status: 403,
+        code: "FORBIDDEN_INSUFFICIENT_ROLES",
+        context: { required: required },
+      });
 
     return true;
   }
 
-  private decodeJwtPayload(token: string): any {
+  private decodeJwtPayload(token: string): KeycloakJwtPayload {
     try {
       const parts = token.split(".");
       if (parts.length < 2) return {};
       const payload = parts[1];
-      const decoded = (globalThis as any).Buffer.from(
-        payload,
-        "base64",
-      ).toString("utf8");
-      return JSON.parse(decoded);
+      const BufferCtor = (
+        globalThis as unknown as {
+          Buffer?: {
+            from: (
+              input: string,
+              encoding: string,
+            ) => { toString: (enc: string) => string };
+          };
+        }
+      ).Buffer;
+      if (!BufferCtor) return {};
+      const decoded = BufferCtor.from(payload, "base64").toString("utf8");
+      return JSON.parse(decoded) as KeycloakJwtPayload;
     } catch (e) {
       return {};
     }

@@ -25,17 +25,24 @@ import {
   AxiosHttpProviderInterface,
   CacheEntry,
 } from "./axios.http.interfaces";
-import { AxiosHttpProviderOptions } from "./axios.http.types";
+import { AxiosHttpProviderOptions } from "./types/axios.http.types";
+import {
+  UrlConfig,
+  UrlDataConfig,
+  PerformGetParams,
+  GenerateCacheKeyParams,
+  SetCacheParams,
+  SetGlobalHeaderParams,
+  SetAuthTokenParams,
+} from "./types/axios.http.params";
 import {
   HTTP_CLIENT_LABEL,
-  ANSI_RED,
-  ANSI_YELLOW,
-  ANSI_BLUE,
-  ANSI_RESET,
   HEADERS_PARAMS,
-  NO_REQUEST_ID_LABEL,
+  ANSI_COLORS,
+  LOG_TYPES,
+  AUTH_SCHEME,
+  DEFAULTS,
 } from "./axios.http.constants";
-import { RequestMethod } from "@nestjs/common";
 
 /** constants, interfaces and types are moved to dedicated files */
 
@@ -50,7 +57,7 @@ export class AxiosHttpProvider implements AxiosHttpProviderInterface {
   private nextErrorInterceptorId = 0;
   private requestInterceptorIds: Set<number> = new Set();
   private responseInterceptorIds: Set<number> = new Set();
-  private cache = new Map<string, CacheEntry<any>>();
+  private cache = new Map<string, CacheEntry<unknown>>();
   private cacheCleanupInterval?: ReturnType<typeof setInterval>;
   private readonly logger?: HttpExternalLogger;
   private readonly loggingConfig?: HttpLoggingConfig;
@@ -74,17 +81,18 @@ export class AxiosHttpProvider implements AxiosHttpProviderInterface {
 
     this.axiosInstance.interceptors.request.use(
       (config: InternalAxiosRequestConfig) => {
-        (config as any).__httpStartedAt = Date.now();
+        (config as unknown as Record<string, unknown>).__httpStartedAt =
+          Date.now();
 
-        if (this.shouldLogType("request")) {
+        if (this.shouldLogType(LOG_TYPES.REQUEST)) {
           const logContext = this.extractLogContext(config);
-          this.emitLog("request", {
+          this.emitLog(LOG_TYPES.REQUEST, {
             method: (config.method || HttpMethod.GET).toUpperCase(),
             url: this.resolveRequestUrl(config),
             source: this.buildSource(logContext),
             requestId: logContext.requestId,
             headers: this.loggingConfig?.includeHeaders
-              ? this.sanitizeHeaders(config.headers as Record<string, any>)
+              ? this.sanitizeHeaders(config.headers as Record<string, unknown>)
               : undefined,
             data: this.loggingConfig?.includeBody ? config.data : undefined,
           });
@@ -93,8 +101,8 @@ export class AxiosHttpProvider implements AxiosHttpProviderInterface {
         return config;
       },
       (error: AxiosError) => {
-        if (this.shouldLogType("error")) {
-          this.emitLog("error", {
+        if (this.shouldLogType(LOG_TYPES.ERROR)) {
+          this.emitLog(LOG_TYPES.ERROR, {
             phase: "request",
             message: error.message,
             url: this.resolveRequestUrl(error.config),
@@ -107,12 +115,14 @@ export class AxiosHttpProvider implements AxiosHttpProviderInterface {
 
     this.axiosInstance.interceptors.response.use(
       (response: AxiosResponse) => {
-        if (this.shouldLogType("response")) {
+        if (this.shouldLogType(LOG_TYPES.RESPONSE)) {
           const logContext = this.extractLogContext(response.config);
-          const startedAt = (response.config as any).__httpStartedAt;
+          const startedAt = (
+            response.config as unknown as Record<string, unknown>
+          ).__httpStartedAt as number | undefined;
           const durationMs = startedAt ? Date.now() - startedAt : undefined;
 
-          this.emitLog("response", {
+          this.emitLog(LOG_TYPES.RESPONSE, {
             method: (response.config.method || HttpMethod.GET).toUpperCase(),
             url: this.resolveRequestUrl(response.config),
             source: this.buildSource(logContext),
@@ -120,7 +130,9 @@ export class AxiosHttpProvider implements AxiosHttpProviderInterface {
             status: response.status,
             durationMs,
             headers: this.loggingConfig?.includeHeaders
-              ? this.sanitizeHeaders(response.headers as Record<string, any>)
+              ? this.sanitizeHeaders(
+                  response.headers as Record<string, unknown>,
+                )
               : undefined,
             data: this.loggingConfig?.includeBody ? response.data : undefined,
           });
@@ -129,13 +141,14 @@ export class AxiosHttpProvider implements AxiosHttpProviderInterface {
         return response;
       },
       (error: AxiosError) => {
-        if (this.shouldLogType("error")) {
-          const cfg = error.config;
+        if (this.shouldLogType(LOG_TYPES.ERROR)) {
+          const cfg = error.config as unknown;
           const logContext = this.extractLogContext(cfg);
-          const startedAt = (cfg as any)?.__httpStartedAt;
+          const startedAt = (cfg as Record<string, unknown>)
+            ?.__httpStartedAt as number | undefined;
           const durationMs = startedAt ? Date.now() - startedAt : undefined;
 
-          this.emitLog("error", {
+          this.emitLog(LOG_TYPES.ERROR, {
             phase: "response",
             method: (cfg?.method || HttpMethod.GET).toUpperCase(),
             url: this.resolveRequestUrl(cfg),
@@ -182,13 +195,13 @@ export class AxiosHttpProvider implements AxiosHttpProviderInterface {
     return types.includes(type);
   }
 
-  private emitLog(type: HttpLogType, meta?: Record<string, any>): void {
+  private emitLog(type: HttpLogType, meta?: Record<string, unknown>): void {
     const context = this.loggingConfig?.context || HTTP_CLIENT_LABEL;
     const message = this.buildLogMessage(type, meta?.source, meta?.requestId);
     const normalizedMeta = this.normalizeMetaForLogging(meta);
 
     if (this.logger) {
-      if (type === "error") {
+      if (type === LOG_TYPES.ERROR) {
         this.logger.error?.({ message, context, meta: normalizedMeta });
         return;
       }
@@ -197,7 +210,7 @@ export class AxiosHttpProvider implements AxiosHttpProviderInterface {
       return;
     }
 
-    if (type === "error") {
+    if (type === LOG_TYPES.ERROR) {
       console.error(message, { context, ...normalizedMeta });
       return;
     }
@@ -211,7 +224,7 @@ export class AxiosHttpProvider implements AxiosHttpProviderInterface {
     requestId?: string,
   ): string {
     const typeLabel = String(type).toLowerCase();
-    const requestIdLabel = requestId || NO_REQUEST_ID_LABEL;
+    const requestIdLabel = requestId || HEADERS_PARAMS.NO_REQUEST_ID_LABEL;
     const prefix =
       source && typeof source === "string"
         ? `[${requestIdLabel}][${typeLabel}][${source}]`
@@ -219,24 +232,24 @@ export class AxiosHttpProvider implements AxiosHttpProviderInterface {
 
     const baseMessage = `${prefix} - ${HTTP_CLIENT_LABEL}`;
 
-    if (type === "error") {
-      return `${ANSI_RED}${baseMessage}${ANSI_RESET}`;
+    if (type === LOG_TYPES.ERROR) {
+      return `${ANSI_COLORS.ERROR}${baseMessage}${ANSI_COLORS.RESET}`;
     }
 
-    if (type === "response") {
-      return `${ANSI_YELLOW}${baseMessage}${ANSI_RESET}`;
+    if (type === LOG_TYPES.RESPONSE) {
+      return `${ANSI_COLORS.WARN}${baseMessage}${ANSI_COLORS.RESET}`;
     }
 
-    if (type === "request") {
-      return `${ANSI_BLUE}${baseMessage}${ANSI_RESET}`;
+    if (type === LOG_TYPES.REQUEST) {
+      return `${ANSI_COLORS.INFO}${baseMessage}${ANSI_COLORS.RESET}`;
     }
 
     return baseMessage;
   }
 
   private normalizeMetaForLogging(
-    meta?: Record<string, any>,
-  ): Record<string, any> | undefined {
+    meta?: Record<string, unknown>,
+  ): Record<string, unknown> | undefined {
     if (!meta) {
       return undefined;
     }
@@ -248,7 +261,7 @@ export class AxiosHttpProvider implements AxiosHttpProviderInterface {
     return Object.fromEntries(entries);
   }
 
-  private normalizeMetaValue(key: string, value: any): any {
+  private normalizeMetaValue(key: string, value: unknown): unknown {
     if (value === undefined || value === null) {
       return value;
     }
@@ -258,16 +271,16 @@ export class AxiosHttpProvider implements AxiosHttpProviderInterface {
     }
 
     if (typeof value === "object" && !Array.isArray(value)) {
-      const cleanedEntries = Object.entries(value).filter(
-        ([, v]) => v !== undefined,
-      );
+      const cleanedEntries = Object.entries(
+        value as Record<string, unknown>,
+      ).filter(([, v]) => v !== undefined);
       return Object.fromEntries(cleanedEntries);
     }
 
     return value;
   }
 
-  private stringifyForLog(value: any): string {
+  private stringifyForLog(value: unknown): string {
     if (typeof value === "string") {
       return value;
     }
@@ -299,8 +312,8 @@ export class AxiosHttpProvider implements AxiosHttpProviderInterface {
   }
 
   private sanitizeHeaders(
-    headers?: Record<string, any>,
-  ): Record<string, any> | undefined {
+    headers?: Record<string, unknown>,
+  ): Record<string, unknown> | undefined {
     if (!headers) {
       return undefined;
     }
@@ -331,9 +344,9 @@ export class AxiosHttpProvider implements AxiosHttpProviderInterface {
     return sanitized;
   }
 
-  private extractLogContext(config?: any): HttpRequestLogContext {
-    const requestLogContext = (config?.logContext ||
-      {}) as HttpRequestLogContext;
+  private extractLogContext(config?: unknown): HttpRequestLogContext {
+    const requestLogContext = ((config as Record<string, unknown>)
+      ?.logContext || {}) as HttpRequestLogContext;
     const decoratorContext = getHttpRequestContext();
 
     const requestIdHeaderName = this.getRequestIdHeaderName();
@@ -364,7 +377,9 @@ export class AxiosHttpProvider implements AxiosHttpProviderInterface {
   }
 
   private getRequestIdHeaderName(): string {
-    return this.loggingConfig?.requestId?.headerName || HEADERS_PARAMS.REQUEST_ID;
+    return (
+      this.loggingConfig?.requestId?.headerName || HEADERS_PARAMS.REQUEST_ID
+    );
   }
 
   private shouldAutoGenerateRequestId(): boolean {
@@ -375,21 +390,21 @@ export class AxiosHttpProvider implements AxiosHttpProviderInterface {
     config,
     headerName,
   }: {
-    config: any;
+    config: unknown;
     headerName: string;
   }): string | undefined {
-    const headers = config?.headers;
+    const headers = (config as Record<string, unknown>)?.headers;
     if (!headers) {
       return undefined;
     }
 
-    if (typeof headers.get === "function") {
-      const val = headers.get(headerName);
+    if (typeof (headers as any)?.get === "function") {
+      const val = (headers as any).get(headerName);
       return typeof val === "string" ? val : undefined;
     }
 
     const normalizedName = headerName.toLowerCase();
-    const entries = Object.entries(headers as Record<string, any>);
+    const entries = Object.entries(headers as Record<string, unknown>);
     for (const [key, value] of entries) {
       if (key.toLowerCase() === normalizedName && typeof value === "string") {
         return value;
@@ -404,7 +419,7 @@ export class AxiosHttpProvider implements AxiosHttpProviderInterface {
     headerName,
     value,
   }: {
-    config: any;
+    config: unknown;
     headerName: string;
     value: string;
   }): void {
@@ -412,18 +427,22 @@ export class AxiosHttpProvider implements AxiosHttpProviderInterface {
       return;
     }
 
-    const headers = config.headers;
+    const headers = (config as Record<string, unknown>)?.headers as
+      | Record<string, unknown>
+      | undefined;
     if (!headers) {
-      config.headers = { [headerName]: value };
+      (config as Record<string, unknown>).headers = {
+        [headerName]: value,
+      } as unknown;
       return;
     }
 
-    if (typeof headers.set === "function") {
-      headers.set(headerName, value);
+    if (typeof (headers as any).set === "function") {
+      (headers as any).set(headerName, value);
       return;
     }
 
-    (headers as Record<string, any>)[headerName] = value;
+    (headers as Record<string, unknown>)[headerName] = value;
   }
 
   private buildSource(logContext: HttpRequestLogContext): string | undefined {
@@ -446,10 +465,10 @@ export class AxiosHttpProvider implements AxiosHttpProviderInterface {
    * Starts automatic cache cleanup
    */
   private startCacheCleanup(): void {
-    // Clean expired cache entries every 5 minutes
+    // Clean expired cache entries every default cache interval
     this.cacheCleanupInterval = setInterval(() => {
       this.cleanupExpiredCache();
-    }, 300000);
+    }, DEFAULTS.CACHE_TTL);
   }
 
   /**
@@ -481,7 +500,7 @@ export class AxiosHttpProvider implements AxiosHttpProviderInterface {
   /**
    * Generates a cache key from URL and config
    */
-  private generateCacheKey(url: string, config?: HttpRequestConfig): string {
+  private generateCacheKey({ url, config }: GenerateCacheKeyParams): string {
     const params = config?.params ? JSON.stringify(config.params) : "";
     return `${url}${params}`;
   }
@@ -505,8 +524,12 @@ export class AxiosHttpProvider implements AxiosHttpProviderInterface {
   /**
    * Sets data in cache
    */
-  private setCache<T>(key: string, data: T, ttl: number = 300000): void {
-    // 5 minutes default
+  private setCache<T>({
+    key,
+    data,
+    ttl = DEFAULTS.CACHE_TTL,
+  }: SetCacheParams<T>): void {
+    // default ttl
     this.cache.set(key, {
       data,
       timestamp: Date.now(),
@@ -538,7 +561,7 @@ export class AxiosHttpProvider implements AxiosHttpProviderInterface {
   /**
    * Sets a global header that will be included in all requests.
    */
-  setGlobalHeader(key: string, value: string): void {
+  setGlobalHeader({ key, value }: SetGlobalHeaderParams): void {
     this.axiosInstance.defaults.headers.common[key] = value;
   }
 
@@ -593,8 +616,8 @@ export class AxiosHttpProvider implements AxiosHttpProviderInterface {
    * Adds a request interceptor to the underlying Axios instance.
    */
   addRequestInterceptor(
-    onFulfilled: (config: any) => any,
-    onRejected?: (error: any) => any,
+    onFulfilled: (config: unknown) => unknown,
+    onRejected?: (error: unknown) => unknown,
   ): number {
     const id = this.axiosInstance.interceptors.request.use(
       onFulfilled,
@@ -616,8 +639,8 @@ export class AxiosHttpProvider implements AxiosHttpProviderInterface {
    * Adds a response interceptor to the underlying Axios instance.
    */
   addResponseInterceptor(
-    onFulfilled: (res: any) => any,
-    onRejected?: (error: any) => any,
+    onFulfilled: (res: unknown) => unknown,
+    onRejected?: (error: unknown) => unknown,
   ): number {
     const id = this.axiosInstance.interceptors.response.use(
       onFulfilled,
@@ -645,40 +668,41 @@ export class AxiosHttpProvider implements AxiosHttpProviderInterface {
   /**
    * Performs a GET request to the specified URL.
    */
-  async get<T>(
-    url: string,
-    config?: HttpRequestConfig,
-  ): Promise<HttpResponse<T>> {
-    const cacheKey = this.generateCacheKey(url, config);
+  async get<T>({ url, config }: UrlConfig): Promise<HttpResponse<T>> {
+    const cacheKey = this.generateCacheKey({ url, config });
     const cached = this.getCached<T>(cacheKey);
     if (cached) {
       return {
         data: cached,
         status: 200,
-        statusText: "OK",
+        statusText: DEFAULTS.STATUS_TEXT_OK,
         headers: {},
         config: config || { url },
       } as HttpResponse<T>;
     }
 
     return this.wrapWithErrorInterceptors(() =>
-      this.performGet<T>(url, config, cacheKey),
+      this.performGet<T>({ url, config, cacheKey }),
     );
   }
 
   /**
    * Internal method to perform the actual GET request.
    */
-  private async performGet<T>(
-    url: string,
-    config?: HttpRequestConfig,
-    cacheKey?: string,
-  ): Promise<HttpResponse<T>> {
+  private async performGet<T>({
+    url,
+    config,
+    cacheKey,
+  }: PerformGetParams): Promise<HttpResponse<T>> {
     const response = await this.axiosInstance.get<T>(url, config);
     const transformed = this.transformResponse<T>(response);
 
     if (cacheKey && config?.cache !== false) {
-      this.setCache(cacheKey, transformed.data, config?.cacheTtl);
+      this.setCache({
+        key: cacheKey,
+        data: transformed.data,
+        ttl: config?.cacheTtl,
+      });
     }
 
     return transformed;
@@ -687,34 +711,31 @@ export class AxiosHttpProvider implements AxiosHttpProviderInterface {
   /**
    * Performs a GET request and returns an Observable.
    */
-  get$<T>(
-    url: string,
-    config?: HttpRequestConfig,
-  ): Observable<HttpResponse<T>> {
-    return from(this.get<T>(url, config));
+  get$<T>({ url, config }: UrlConfig): Observable<HttpResponse<T>> {
+    return from(this.get<T>({ url, config }));
   }
 
   /**
    * Performs a POST request.
    */
-  async post<T>(
-    url: string,
-    data?: unknown,
-    config?: HttpRequestConfig,
-  ): Promise<HttpResponse<T>> {
+  async post<T>({
+    url,
+    data,
+    config,
+  }: UrlDataConfig): Promise<HttpResponse<T>> {
     return this.wrapWithErrorInterceptors(() =>
-      this.performPost<T>(url, data, config),
+      this.performPost<T>({ url, data, config }),
     );
   }
 
   /**
    * Internal method to perform the actual POST request.
    */
-  private async performPost<T>(
-    url: string,
-    data?: unknown,
-    config?: HttpRequestConfig,
-  ): Promise<HttpResponse<T>> {
+  private async performPost<T>({
+    url,
+    data,
+    config,
+  }: UrlDataConfig): Promise<HttpResponse<T>> {
     const response = await this.axiosInstance.post<T>(url, data, config);
     return this.transformResponse<T>(response);
   }
@@ -722,35 +743,27 @@ export class AxiosHttpProvider implements AxiosHttpProviderInterface {
   /**
    * Performs a POST request and returns an Observable.
    */
-  post$<T>(
-    url: string,
-    data?: unknown,
-    config?: HttpRequestConfig,
-  ): Observable<HttpResponse<T>> {
-    return from(this.post<T>(url, data, config));
+  post$<T>({ url, data, config }: UrlDataConfig): Observable<HttpResponse<T>> {
+    return from(this.post<T>({ url, data, config }));
   }
 
   /**
    * Performs a PUT request.
    */
-  async put<T>(
-    url: string,
-    data?: unknown,
-    config?: HttpRequestConfig,
-  ): Promise<HttpResponse<T>> {
+  async put<T>({ url, data, config }: UrlDataConfig): Promise<HttpResponse<T>> {
     return this.wrapWithErrorInterceptors(() =>
-      this.performPut<T>(url, data, config),
+      this.performPut<T>({ url, data, config }),
     );
   }
 
   /**
    * Internal method to perform the actual PUT request.
    */
-  private async performPut<T>(
-    url: string,
-    data?: unknown,
-    config?: HttpRequestConfig,
-  ): Promise<HttpResponse<T>> {
+  private async performPut<T>({
+    url,
+    data,
+    config,
+  }: UrlDataConfig): Promise<HttpResponse<T>> {
     const response = await this.axiosInstance.put<T>(url, data, config);
     return this.transformResponse<T>(response);
   }
@@ -758,35 +771,31 @@ export class AxiosHttpProvider implements AxiosHttpProviderInterface {
   /**
    * Performs a PUT request and returns an Observable.
    */
-  put$<T>(
-    url: string,
-    data?: unknown,
-    config?: HttpRequestConfig,
-  ): Observable<HttpResponse<T>> {
-    return from(this.put<T>(url, data, config));
+  put$<T>({ url, data, config }: UrlDataConfig): Observable<HttpResponse<T>> {
+    return from(this.put<T>({ url, data, config }));
   }
 
   /**
    * Performs a PATCH request.
    */
-  async patch<T>(
-    url: string,
-    data?: unknown,
-    config?: HttpRequestConfig,
-  ): Promise<HttpResponse<T>> {
+  async patch<T>({
+    url,
+    data,
+    config,
+  }: UrlDataConfig): Promise<HttpResponse<T>> {
     return this.wrapWithErrorInterceptors(() =>
-      this.performPatch<T>(url, data, config),
+      this.performPatch<T>({ url, data, config }),
     );
   }
 
   /**
    * Internal method to perform the actual PATCH request.
    */
-  private async performPatch<T>(
-    url: string,
-    data?: unknown,
-    config?: HttpRequestConfig,
-  ): Promise<HttpResponse<T>> {
+  private async performPatch<T>({
+    url,
+    data,
+    config,
+  }: UrlDataConfig): Promise<HttpResponse<T>> {
     const response = await this.axiosInstance.patch<T>(url, data, config);
     return this.transformResponse<T>(response);
   }
@@ -794,33 +803,26 @@ export class AxiosHttpProvider implements AxiosHttpProviderInterface {
   /**
    * Performs a PATCH request and returns an Observable.
    */
-  patch$<T>(
-    url: string,
-    data?: unknown,
-    config?: HttpRequestConfig,
-  ): Observable<HttpResponse<T>> {
-    return from(this.patch<T>(url, data, config));
+  patch$<T>({ url, data, config }: UrlDataConfig): Observable<HttpResponse<T>> {
+    return from(this.patch<T>({ url, data, config }));
   }
 
   /**
    * Performs a DELETE request.
    */
-  async delete<T>(
-    url: string,
-    config?: HttpRequestConfig,
-  ): Promise<HttpResponse<T>> {
+  async delete<T>({ url, config }: UrlConfig): Promise<HttpResponse<T>> {
     return this.wrapWithErrorInterceptors(() =>
-      this.performDelete<T>(url, config),
+      this.performDelete<T>({ url, config }),
     );
   }
 
   /**
    * Internal method to perform the actual DELETE request.
    */
-  private async performDelete<T>(
-    url: string,
-    config?: HttpRequestConfig,
-  ): Promise<HttpResponse<T>> {
+  private async performDelete<T>({
+    url,
+    config,
+  }: UrlConfig): Promise<HttpResponse<T>> {
     const response = await this.axiosInstance.delete<T>(url, config);
     return this.transformResponse<T>(response);
   }
@@ -828,32 +830,26 @@ export class AxiosHttpProvider implements AxiosHttpProviderInterface {
   /**
    * Performs a DELETE request and returns an Observable.
    */
-  delete$<T>(
-    url: string,
-    config?: HttpRequestConfig,
-  ): Observable<HttpResponse<T>> {
-    return from(this.delete<T>(url, config));
+  delete$<T>({ url, config }: UrlConfig): Observable<HttpResponse<T>> {
+    return from(this.delete<T>({ url, config }));
   }
 
   /**
    * Performs a HEAD request.
    */
-  async head<T>(
-    url: string,
-    config?: HttpRequestConfig,
-  ): Promise<HttpResponse<T>> {
+  async head<T>({ url, config }: UrlConfig): Promise<HttpResponse<T>> {
     return this.wrapWithErrorInterceptors(() =>
-      this.performHead<T>(url, config),
+      this.performHead<T>({ url, config }),
     );
   }
 
   /**
    * Internal method to perform the actual HEAD request.
    */
-  private async performHead<T>(
-    url: string,
-    config?: HttpRequestConfig,
-  ): Promise<HttpResponse<T>> {
+  private async performHead<T>({
+    url,
+    config,
+  }: UrlConfig): Promise<HttpResponse<T>> {
     const response = await this.axiosInstance.head<T>(url, config);
     return this.transformResponse<T>(response);
   }
@@ -861,32 +857,26 @@ export class AxiosHttpProvider implements AxiosHttpProviderInterface {
   /**
    * Performs a HEAD request and returns an Observable.
    */
-  head$<T>(
-    url: string,
-    config?: HttpRequestConfig,
-  ): Observable<HttpResponse<T>> {
-    return from(this.head<T>(url, config));
+  head$<T>({ url, config }: UrlConfig): Observable<HttpResponse<T>> {
+    return from(this.head<T>({ url, config }));
   }
 
   /**
    * Performs an OPTIONS request.
    */
-  async options<T>(
-    url: string,
-    config?: HttpRequestConfig,
-  ): Promise<HttpResponse<T>> {
+  async options<T>({ url, config }: UrlConfig): Promise<HttpResponse<T>> {
     return this.wrapWithErrorInterceptors(() =>
-      this.performOptions<T>(url, config),
+      this.performOptions<T>({ url, config }),
     );
   }
 
   /**
    * Internal method to perform the actual OPTIONS request.
    */
-  private async performOptions<T>(
-    url: string,
-    config?: HttpRequestConfig,
-  ): Promise<HttpResponse<T>> {
+  private async performOptions<T>({
+    url,
+    config,
+  }: UrlConfig): Promise<HttpResponse<T>> {
     const response = await this.axiosInstance.options<T>(url, config);
     return this.transformResponse<T>(response);
   }
@@ -894,11 +884,8 @@ export class AxiosHttpProvider implements AxiosHttpProviderInterface {
   /**
    * Performs an OPTIONS request and returns an Observable.
    */
-  options$<T>(
-    url: string,
-    config?: HttpRequestConfig,
-  ): Observable<HttpResponse<T>> {
-    return from(this.options<T>(url, config));
+  options$<T>({ url, config }: UrlConfig): Observable<HttpResponse<T>> {
+    return from(this.options<T>({ url, config }));
   }
 
   /**
@@ -928,8 +915,8 @@ export class AxiosHttpProvider implements AxiosHttpProviderInterface {
   /**
    * Sets the authorization token for requests.
    */
-  setAuthToken(token: string, type: string = "Bearer"): void {
-    this.axiosInstance.defaults.headers.common["Authorization"] =
+  setAuthToken({ token, type = AUTH_SCHEME.BEARER }: SetAuthTokenParams): void {
+    this.axiosInstance.defaults.headers.common[HEADERS_PARAMS.AUTHORIZATION] =
       `${type} ${token}`;
     // Log only the initial part of the token to avoid exposing the full secret in logs
     try {
@@ -945,7 +932,9 @@ export class AxiosHttpProvider implements AxiosHttpProviderInterface {
    * Clears the authorization token.
    */
   clearAuthToken(): void {
-    delete this.axiosInstance.defaults.headers.common["Authorization"];
+    delete this.axiosInstance.defaults.headers.common[
+      HEADERS_PARAMS.AUTHORIZATION
+    ];
   }
 
   /**
@@ -988,7 +977,12 @@ export class AxiosHttpProvider implements AxiosHttpProviderInterface {
       // Map to a normalized application error with context
       try {
         const mapper = new ErrorMapperService();
-        const mapped = mapper.mapUpstreamError(processedError) as any;
+        const mapped = mapper.mapUpstreamError(processedError) as {
+          message?: string;
+          status?: number;
+          code?: string;
+          context?: Record<string, unknown>;
+        };
         throw new HttpClientError({
           message: mapped.message,
           status: mapped.status,
@@ -999,10 +993,17 @@ export class AxiosHttpProvider implements AxiosHttpProviderInterface {
         // If mapping fails, rethrow a generic HttpClientError with minimal context
         const fallback = new HttpClientError({
           message:
-            (processedError && (processedError as any).message) ||
+            (processedError &&
+              (processedError as Record<string, unknown>).message) ||
             "HTTP client error",
-          status: (processedError && (processedError as any).status) || 502,
-          code: (processedError && (processedError as any).code) || undefined,
+          status:
+            ((processedError &&
+              (processedError as Record<string, unknown>).status) as number) ||
+            502,
+          code: (processedError &&
+            (processedError as Record<string, unknown>).code) as
+            | string
+            | undefined,
           context: { original: String(processedError) },
         });
         throw fallback;

@@ -59,5 +59,16 @@ export interface KeycloakClientInterface {
   /**
    * Get user info
    */
-  getUserInfo(token: string): Promise<any>;
+  getUserInfo(token: string): Promise<Record<string, unknown>>;
+}
+
+/**
+ * Minimal shape for decoded JWT payloads used by the RolesGuard.
+ */
+export interface KeycloakJwtPayload {
+  realm_access?: {
+    roles?: string[];
+  };
+  resource_access?: Record<string, { roles?: string[] }>;
+  [key: string]: unknown;
 }

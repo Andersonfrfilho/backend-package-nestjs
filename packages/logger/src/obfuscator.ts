@@ -2,65 +2,73 @@ import {
   Obfuscator,
   SensitiveEntry,
 } from "./implementations/winston/winston.logger.types";
-import { DEFAULT_SENSITIVE_KEYS } from "./logger.constant";
+import { DefaultObfuscatorParams } from "./obfuscator.types";
+import { DEFAULT_SENSITIVE_KEYS, MASK } from "./logger.constant";
 
-function isObject(v: any) {
-  return v !== null && typeof v === "object" && !Array.isArray(v);
+function isObject(value: unknown) {
+  return (
+    value !== null && typeof value === "object" && !Array.isArray(value as any)
+  );
 }
 
-function maskString(s: string) {
-  if (s.length <= 4) return "****";
-  return s.slice(0, 2) + "****" + s.slice(-2);
+function maskString(str: string) {
+  if (str.length <= MASK.MIN_LENGTH) return MASK.REPLACEMENT;
+  return (
+    str.slice(0, MASK.EDGE_CHARS) +
+    MASK.REPLACEMENT +
+    str.slice(-MASK.EDGE_CHARS)
+  );
 }
 
 function normalizeEntries(entries?: SensitiveEntry[]) {
   const keys: string[] = [];
   const custom = new Map<string, Obfuscator>();
   if (!entries || entries.length === 0) return { keys, custom };
-  for (const e of entries) {
-    if (typeof e === "string") {
-      keys.push(e);
+  for (const entry of entries) {
+    if (typeof entry === "string") {
+      keys.push(entry);
     } else if (
-      e &&
-      typeof e === "object" &&
-      "key" in e &&
-      typeof e.key === "string" &&
-      typeof e.obfuscator === "function"
+      entry &&
+      typeof entry === "object" &&
+      "key" in entry &&
+      typeof entry.key === "string" &&
+      typeof entry.obfuscator === "function"
     ) {
-      custom.set(e.key.toLowerCase(), e.obfuscator);
+      custom.set(entry.key.toLowerCase(), entry.obfuscator);
     }
   }
   return { keys, custom };
 }
 
-export function defaultObfuscator(obj: any, entries?: SensitiveEntry[]): any {
+export function defaultObfuscator(params: DefaultObfuscatorParams): unknown {
+  const { obj, entries } = params;
   if (obj == null) return obj;
   if (Array.isArray(obj)) {
-    return obj.map((v) => defaultObfuscator(v, entries));
+    return obj.map((item) => defaultObfuscator({ obj: item, entries }));
   }
   if (!isObject(obj)) return obj;
 
   const { keys: extraKeys, custom } = normalizeEntries(entries);
   const keys = DEFAULT_SENSITIVE_KEYS.concat(extraKeys || []);
 
-  const out: any = {};
-  for (const k of Object.keys(obj)) {
-    const val = obj[k];
-    const lower = k.toLowerCase();
-    if (custom.has(lower)) {
+  const out: Record<string, unknown> = {};
+  for (const key of Object.keys(obj as Record<string, unknown>)) {
+    const value = (obj as Record<string, unknown>)[key];
+    const lowerKey = key.toLowerCase();
+    if (custom.has(lowerKey)) {
       try {
-        out[k] = custom.get(lower)!(val);
-      } catch (e) {
-        out[k] = "****";
+        out[key] = custom.get(lowerKey)!(value);
+      } catch (error) {
+        out[key] = MASK.REPLACEMENT;
       }
-    } else if (keys.some((s) => lower.includes(s.toLowerCase()))) {
+    } else if (keys.some((s) => lowerKey.includes(s.toLowerCase()))) {
       // mask value using default strategy
-      if (typeof val === "string") out[k] = maskString(val);
-      else out[k] = "****";
-    } else if (isObject(val) || Array.isArray(val)) {
-      out[k] = defaultObfuscator(val, entries);
+      if (typeof value === "string") out[key] = maskString(value);
+      else out[key] = MASK.REPLACEMENT;
+    } else if (isObject(value) || Array.isArray(value)) {
+      out[key] = defaultObfuscator({ obj: value, entries });
     } else {
-      out[k] = val;
+      out[key] = value;
     }
   }
   return out;
@@ -69,5 +77,5 @@ export function defaultObfuscator(obj: any, entries?: SensitiveEntry[]): any {
 export function buildDefaultObfuscator(
   additional?: SensitiveEntry[],
 ): Obfuscator {
-  return (v: any) => defaultObfuscator(v, additional);
+  return (v: any) => defaultObfuscator({ obj: v, entries: additional });
 }

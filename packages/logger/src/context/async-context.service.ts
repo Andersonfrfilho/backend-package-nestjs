@@ -1,13 +1,17 @@
-import { AsyncLocalStorage } from 'async_hooks';
+import { AsyncLocalStorage } from "async_hooks";
+import { RequestContext } from "./async-context.types";
 
-export type RequestContext = Record<string, any> | undefined;
-
-export const asyncLocalStorage = new AsyncLocalStorage<Record<string, any>>();
+export const asyncLocalStorage = new AsyncLocalStorage<
+  Record<string, unknown>
+>();
 
 export function getContext(): RequestContext {
   return asyncLocalStorage.getStore();
 }
 
-export function runWithContext<T>(ctx: Record<string, any>, fn: () => T): T {
-  return asyncLocalStorage.run(ctx, fn);
+export function runWithContext<T>(
+  ctx: Record<string, unknown>,
+  fn: () => T,
+): T {
+  return asyncLocalStorage.run(ctx, fn as any);
 }

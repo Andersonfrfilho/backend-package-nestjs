@@ -11,6 +11,6 @@ export interface WinstonModuleConfig {
   obfuscatorKeys?: Array<string | ObfuscatorKey>;
 }
 
-export type Obfuscator = (value: any) => any;
+export type Obfuscator = (value: unknown) => unknown;
 
 export type SensitiveEntry = string | { key: string; obfuscator: Obfuscator };

@@ -2,7 +2,7 @@ export interface ErrorContext {
   service?: string;
   url?: string;
   method?: string;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 export type BaseAppErrorParams<Context = ErrorContext> = {

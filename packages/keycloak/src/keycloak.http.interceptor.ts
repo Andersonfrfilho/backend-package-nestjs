@@ -15,13 +15,12 @@ import { KEYCLOAK_CLIENT } from "./keycloak.token";
  */
 @Injectable()
 export class KeycloakHttpInterceptor implements NestInterceptor {
-  constructor(
-    @Inject(KEYCLOAK_CLIENT)
-    private readonly keycloakClient: KeycloakClientInterface,
-  ) {}
+  constructor() {}
 
-  intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
-    const request = context.switchToHttp().getRequest();
+  intercept(context: ExecutionContext, next: CallHandler): Observable<unknown> {
+    const request: Record<string, unknown> = context
+      .switchToHttp()
+      .getRequest();
 
     // Only add token for external API calls (not Keycloak itself)
     if (request.url && !request.url.includes("keycloak")) {

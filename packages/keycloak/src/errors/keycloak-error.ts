@@ -1,11 +1,11 @@
 export class KeycloakError extends Error {
   public readonly statusCode?: number;
-  public readonly details?: any;
+  public readonly details?: unknown;
   public readonly keycloakError?: string;
 
   constructor(
     message: string,
-    opts?: { statusCode?: number; details?: any; keycloakError?: string },
+    opts?: { statusCode?: number; details?: unknown; keycloakError?: string },
   ) {
     super(message);
     this.name = "KeycloakError";

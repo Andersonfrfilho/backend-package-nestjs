@@ -1,5 +1,6 @@
 import { Module, DynamicModule } from "@nestjs/common";
 import { HTTP_PROVIDER, HttpModule } from "@adatechnology/http-client";
+import type { HttpProviderInterface } from "@adatechnology/http-client";
 import type { AxiosRequestConfig, AxiosInstance } from "axios";
 
 import { KeycloakClient } from "./keycloak.client";
@@ -22,14 +23,15 @@ export class KeycloakModule {
         { provide: KEYCLOAK_CONFIG, useValue: config },
         {
           provide: KEYCLOAK_CLIENT,
-          useFactory: (cfg: KeycloakConfig, httpProvider: any) =>
-            new KeycloakClient(cfg, httpProvider),
+          useFactory: (
+            cfg: KeycloakConfig,
+            httpProvider: HttpProviderInterface,
+          ) => new KeycloakClient(cfg, httpProvider),
           inject: [KEYCLOAK_CONFIG, HTTP_PROVIDER],
         },
         {
           provide: KEYCLOAK_HTTP_INTERCEPTOR,
-          useFactory: (client: any) => new KeycloakHttpInterceptor(client),
-          inject: [KEYCLOAK_CLIENT],
+          useFactory: () => new KeycloakHttpInterceptor(),
         },
       ],
       exports: [KEYCLOAK_CLIENT, KEYCLOAK_HTTP_INTERCEPTOR],

@@ -9,6 +9,26 @@ import type {
 } from "./keycloak.interface";
 import { KeycloakError } from "./errors/keycloak-error";
 
+function extractErrorInfo(err: unknown) {
+  const e = err as Record<string, unknown> | undefined;
+  if (e && typeof e.response === "object" && e.response !== null) {
+    const resp = e.response as Record<string, unknown>;
+    const statusCode =
+      typeof resp.status === "number" ? (resp.status as number) : undefined;
+    const details = resp.data ?? undefined;
+    const keycloakError =
+      details &&
+      typeof details === "object" &&
+      "error" in (details as Record<string, unknown>)
+        ? (details as Record<string, unknown>).error
+        : undefined;
+    return { statusCode, details, keycloakError };
+  }
+  return {
+    details: e && typeof e.message === "string" ? e.message : undefined,
+  };
+}
+
 /**
  * Minimal Keycloak client implementation without external shared infra dependencies.
  */
@@ -45,32 +65,41 @@ export class KeycloakClient implements KeycloakClientInterface {
     return this.tokenPromise;
   }
 
-  async getTokenWithCredentials(username: string, password: string) {
+  async getTokenWithCredentials(params: {
+    username: string;
+    password: string;
+  }) {
+    const { username, password } = params;
     const tokenUrl = `${this.config.baseUrl}/realms/${this.config.realm}/protocol/openid-connect/token`;
 
-    const data = new URLSearchParams();
-    data.append("client_id", this.config.credentials.clientId);
-    data.append("grant_type", "password");
-    data.append("username", username);
-    data.append("password", password);
+    const body = new URLSearchParams();
+    body.append("client_id", this.config.credentials.clientId);
+    body.append("grant_type", "password");
+    body.append("username", username);
+    body.append("password", password);
     if (this.config.credentials.clientSecret) {
-      data.append("client_secret", this.config.credentials.clientSecret);
+      body.append("client_secret", this.config.credentials.clientSecret);
     }
 
     // include configured scopes (default to openid/profile/email)
-    data.append("scope", KeycloakClient.scopesToString(this.config.scopes));
+    body.append("scope", KeycloakClient.scopesToString(this.config.scopes));
 
     try {
-      const response = await this.httpProvider.post<any>(tokenUrl, data, {
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      } as any);
+      const response = await this.httpProvider.post<KeycloakTokenResponse>({
+        url: tokenUrl,
+        data: body,
+        config: {
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        },
+      });
 
       return response.data;
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const { statusCode, details, keycloakError } = extractErrorInfo(err);
       throw new KeycloakError("Failed to obtain token with credentials", {
-        statusCode: err?.response?.status,
-        details: err?.response?.data ?? err?.message,
-        keycloakError: err?.response?.data?.error,
+        statusCode,
+        details,
+        keycloakError,
       });
     }
   }
@@ -97,20 +126,21 @@ export class KeycloakClient implements KeycloakClientInterface {
       }
     }
 
-    const response = await this.httpProvider.post<KeycloakTokenResponse>(
-      tokenUrl,
+    const response = await this.httpProvider.post<KeycloakTokenResponse>({
+      url: tokenUrl,
       data,
-      {
+      config: {
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      } as any,
-    );
+      },
+    });
     try {
       return response.data;
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const { statusCode, details, keycloakError } = extractErrorInfo(err);
       throw new KeycloakError("Failed to request token", {
-        statusCode: err?.response?.status,
-        details: err?.response?.data ?? err?.message,
-        keycloakError: err?.response?.data?.error,
+        statusCode,
+        details,
+        keycloakError,
       });
     }
   }
@@ -126,24 +156,25 @@ export class KeycloakClient implements KeycloakClientInterface {
       data.append("client_secret", this.config.credentials.clientSecret);
     }
 
-    const response = await this.httpProvider.post<KeycloakTokenResponse>(
-      tokenUrl,
+    const response = await this.httpProvider.post<KeycloakTokenResponse>({
+      url: tokenUrl,
       data,
-      {
+      config: {
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
       },
-    );
+    });
 
     try {
       const expiresAt = Date.now() + (response.data.expires_in - 60) * 1000;
       this.tokenCache = { token: response.data.access_token, expiresAt };
 
       return response.data;
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const { statusCode, details, keycloakError } = extractErrorInfo(err);
       throw new KeycloakError("Failed to refresh token", {
-        statusCode: err?.response?.status,
-        details: err?.response?.data ?? err?.message,
-        keycloakError: err?.response?.data?.error,
+        statusCode,
+        details,
+        keycloakError,
       });
     }
   }
@@ -159,34 +190,41 @@ export class KeycloakClient implements KeycloakClientInterface {
         data.append("client_secret", this.config.credentials.clientSecret);
       }
 
-      const response = await this.httpProvider.post(introspectUrl, data, {
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      } as any);
+      const response = await this.httpProvider.post<{ active: boolean }>({
+        url: introspectUrl,
+        data,
+        config: {
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        },
+      });
 
-      return (response.data as any).active === true;
-    } catch (error: any) {
+      return response.data?.active === true;
+    } catch (error: unknown) {
+      const { statusCode, details, keycloakError } = extractErrorInfo(error);
       // wrap introspection errors for callers
       throw new KeycloakError("Token introspection failed", {
-        statusCode: error?.response?.status,
-        details: error?.response?.data ?? error?.message,
-        keycloakError: error?.response?.data?.error,
+        statusCode,
+        details,
+        keycloakError,
       });
     }
   }
 
-  async getUserInfo(token: string): Promise<any> {
+  async getUserInfo(token: string): Promise<Record<string, unknown>> {
     const userInfoUrl = `${this.config.baseUrl}/realms/${this.config.realm}/protocol/openid-connect/userinfo`;
     try {
-      const response = await this.httpProvider.get(userInfoUrl, {
-        headers: { Authorization: `Bearer ${token}` },
-      } as any);
+      const response = await this.httpProvider.get<Record<string, unknown>>({
+        url: userInfoUrl,
+        config: { headers: { Authorization: `Bearer ${token}` } },
+      });
 
       return response.data;
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const { statusCode, details, keycloakError } = extractErrorInfo(err);
       throw new KeycloakError("Failed to retrieve userinfo", {
-        statusCode: err?.response?.status,
-        details: err?.response?.data ?? err?.message,
-        keycloakError: err?.response?.data?.error,
+        statusCode,
+        details,
+        keycloakError,
       });
     }
   }
