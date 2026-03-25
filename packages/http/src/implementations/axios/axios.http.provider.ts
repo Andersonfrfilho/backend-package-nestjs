@@ -104,7 +104,7 @@ export class AxiosHttpProvider implements AxiosHttpProviderInterface {
         if (this.shouldLogType(LOG_TYPES.ERROR)) {
           this.emitLog(LOG_TYPES.ERROR, {
             phase: "request",
-            message: error.message,
+            message: String(error.message),
             url: this.resolveRequestUrl(error.config),
           });
         }
@@ -123,7 +123,9 @@ export class AxiosHttpProvider implements AxiosHttpProviderInterface {
           const durationMs = startedAt ? Date.now() - startedAt : undefined;
 
           this.emitLog(LOG_TYPES.RESPONSE, {
-            method: (response.config.method || HttpMethod.GET).toUpperCase(),
+            method: String(
+              (response.config as any)?.method || HttpMethod.GET,
+            ).toUpperCase(),
             url: this.resolveRequestUrl(response.config),
             source: this.buildSource(logContext),
             requestId: logContext.requestId,
@@ -150,13 +152,15 @@ export class AxiosHttpProvider implements AxiosHttpProviderInterface {
 
           this.emitLog(LOG_TYPES.ERROR, {
             phase: "response",
-            method: (cfg?.method || HttpMethod.GET).toUpperCase(),
+            method: String(
+              (cfg as any)?.method || HttpMethod.GET,
+            ).toUpperCase(),
             url: this.resolveRequestUrl(cfg),
             source: this.buildSource(logContext),
             requestId: logContext.requestId,
             status: error.response?.status,
             durationMs,
-            message: error.message,
+            message: String(error.message),
             responseData: this.loggingConfig?.includeBody
               ? error.response?.data
               : undefined,
@@ -197,7 +201,11 @@ export class AxiosHttpProvider implements AxiosHttpProviderInterface {
 
   private emitLog(type: HttpLogType, meta?: Record<string, unknown>): void {
     const context = this.loggingConfig?.context || HTTP_CLIENT_LABEL;
-    const message = this.buildLogMessage(type, meta?.source, meta?.requestId);
+    const message = this.buildLogMessage(
+      type,
+      meta?.source as string | undefined,
+      meta?.requestId as string | undefined,
+    );
     const normalizedMeta = this.normalizeMetaForLogging(meta);
 
     if (this.logger) {
@@ -518,7 +526,7 @@ export class AxiosHttpProvider implements AxiosHttpProviderInterface {
       return null;
     }
 
-    return entry.data;
+    return entry.data as unknown as T;
   }
 
   /**
@@ -620,8 +628,8 @@ export class AxiosHttpProvider implements AxiosHttpProviderInterface {
     onRejected?: (error: unknown) => unknown,
   ): number {
     const id = this.axiosInstance.interceptors.request.use(
-      onFulfilled,
-      onRejected,
+      onFulfilled as any,
+      onRejected as any,
     );
     this.requestInterceptorIds.add(id);
     return id;
@@ -643,8 +651,8 @@ export class AxiosHttpProvider implements AxiosHttpProviderInterface {
     onRejected?: (error: unknown) => unknown,
   ): number {
     const id = this.axiosInstance.interceptors.response.use(
-      onFulfilled,
-      onRejected,
+      onFulfilled as any,
+      onRejected as any,
     );
     this.responseInterceptorIds.add(id);
     return id;
@@ -977,14 +985,15 @@ export class AxiosHttpProvider implements AxiosHttpProviderInterface {
       // Map to a normalized application error with context
       try {
         const mapper = new ErrorMapperService();
-        const mapped = mapper.mapUpstreamError(processedError) as {
+        const mapped: {
           message?: string;
           status?: number;
           code?: string;
           context?: Record<string, unknown>;
-        };
+        } = mapper.mapUpstreamError(processedError) as unknown as any;
+        const _msg: string = String(mapped.message ?? "HTTP client error");
         throw new HttpClientError({
-          message: mapped.message,
+          message: _msg,
           status: mapped.status,
           code: mapped.code,
           context: mapped.context,

@@ -8,12 +8,19 @@
     "declarationDir": "dist/types",
     "declaration": true,
     "composite": true
+    ,
+    "paths": {
+      "@adatechnology/logger": ["../logger/dist/types", "../logger/dist"],
+      "@adatechnology/logger/*": ["../logger/dist/types/*", "../logger/dist/*"]
+    }
   },
   "include": [
     "./src/**/*.ts"
   ],
   "exclude": ["node_modules", "dist"],
   "references": [
-    { "path": "../shared" }
+    { "path": "../shared" },
+    { "path": "../logger" }
   ]
+
 }

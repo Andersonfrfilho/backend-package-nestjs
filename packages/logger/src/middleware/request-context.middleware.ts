@@ -2,6 +2,7 @@ import { Injectable, NestMiddleware } from "@nestjs/common";
 import { randomUUID } from "crypto";
 import { asyncLocalStorage } from "../context/async-context.service";
 import { HEADERS_PARAMS } from "../request-id.constants";
+import { ID_FALLBACK_SEPARATOR } from "../logger.constant";
 import type {
   RequestLike,
   ResponseLike,

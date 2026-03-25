@@ -1,14 +1,21 @@
 import { DynamicModule, Module, Provider } from "@nestjs/common";
 import axios, { AxiosInstance, AxiosRequestConfig } from "axios";
-import { LOGGER_PROVIDER } from "@adatechnology/logger";
+// Avoid importing the logger package here to prevent d.ts resolution issues during
+// the http package build; use the literal token string instead where needed.
 import { HttpModuleOptions } from "../../http.module";
-import type { AxiosForRootParam, AxiosForRootOptions } from "./axios.module.types";
+import type {
+  AxiosForRootParam,
+  AxiosForRootOptions,
+} from "./types/axios.module.types";
 import { HTTP_AXIOS_CONNECTION, HTTP_AXIOS_PROVIDER } from "../../http.token";
 import { AxiosHttpProvider } from "./axios.http.provider";
 
 @Module({})
 export class HttpImplementationAxiosModule {
-  static forRoot(configOrOptions?: AxiosForRootParam, options?: AxiosForRootOptions): DynamicModule {
+  static forRoot(
+    configOrOptions?: AxiosForRootParam,
+    options?: AxiosForRootOptions,
+  ): DynamicModule {
     // support both (config, options) and single object { config, options }
     let config: AxiosRequestConfig | AxiosInstance | undefined;
     let opts: HttpModuleOptions | undefined;
@@ -16,12 +23,16 @@ export class HttpImplementationAxiosModule {
     if (
       configOrOptions &&
       typeof configOrOptions === "object" &&
-      ("config" in (configOrOptions as any) || "options" in (configOrOptions as any))
+      ("config" in (configOrOptions as any) ||
+        "options" in (configOrOptions as any))
     ) {
       config = (configOrOptions as any).config;
       opts = (configOrOptions as any).options;
     } else {
-      config = configOrOptions as AxiosRequestConfig | AxiosInstance | undefined;
+      config = configOrOptions as
+        | AxiosRequestConfig
+        | AxiosInstance
+        | undefined;
       opts = options;
     }
 
@@ -37,14 +48,14 @@ export class HttpImplementationAxiosModule {
       },
       {
         provide: HTTP_AXIOS_PROVIDER,
-          useFactory: (conn: AxiosInstance, logger?: any) =>
+        useFactory: (conn: AxiosInstance, logger?: any) =>
           new AxiosHttpProvider(conn, {
             logger,
             logging: opts?.logging,
           }),
         inject: [
           HTTP_AXIOS_CONNECTION,
-          { token: LOGGER_PROVIDER, optional: true },
+          { token: "LOGGER_PROVIDER", optional: true },
         ],
       },
     ];

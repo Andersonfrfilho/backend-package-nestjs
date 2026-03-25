@@ -2,11 +2,12 @@ import { DynamicModule, Module, Scope, Provider } from "@nestjs/common";
 import { LoggerProvider } from "./logger.provider";
 import { LOGGER_PROVIDER } from "./logger.token";
 import { WinstonImplementationModule } from "./implementations/winston/winston.logger.module";
+import type { WinstonModuleConfig } from "./implementations/winston/winston.logger.types";
 
 @Module({})
 export class LoggerModule {
   static forRoot(
-    config?: { requestScoped?: boolean } & Record<string, unknown>,
+    config?: WinstonModuleConfig & { requestScoped?: boolean },
   ): DynamicModule {
     const implModule = WinstonImplementationModule.forRoot(config);
     const provider: Provider = {

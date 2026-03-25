@@ -4,13 +4,13 @@ import { HTTP_ERRORS, HTTP_SERVICE_NAME } from "./errors.constants";
 
 export class HttpClientError extends BaseAppError<Record<string, unknown>> {
   constructor(params: {
-    message: string;
+    message: string | unknown;
     status?: number;
     code?: string;
     context?: Record<string, unknown>;
   }) {
     const p: BaseAppErrorParams<Record<string, unknown>> = {
-      message: params.message,
+      message: String(params.message),
       status: params.status ?? HTTP_ERRORS.DEFAULT_STATUS,
       code: params.code,
       context: { service: HTTP_SERVICE_NAME, ...(params.context || {}) },
