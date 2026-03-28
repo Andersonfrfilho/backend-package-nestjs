@@ -2,7 +2,7 @@ import { DynamicModule, Module, Provider } from "@nestjs/common";
 import axios, { AxiosInstance, AxiosRequestConfig } from "axios";
 // Avoid importing the logger package here to prevent d.ts resolution issues during
 // the http package build; use the literal token string instead where needed.
-import { HttpModuleOptions } from "../../http.module";
+import { HttpModuleOptions } from "../../http.interface";
 import type {
   AxiosForRootParam,
   AxiosForRootOptions,
@@ -41,22 +41,25 @@ export class HttpImplementationAxiosModule {
         ? (config as AxiosInstance)
         : axios.create(config as AxiosRequestConfig);
 
+    const httpToken = opts?.provide || HTTP_AXIOS_PROVIDER;
+
     const providers: Provider[] = [
       {
         provide: HTTP_AXIOS_CONNECTION,
         useValue: axiosInstance,
       },
       {
-        provide: HTTP_AXIOS_PROVIDER,
-        useFactory: (conn: AxiosInstance, logger?: any) =>
+        provide: httpToken,
+        useFactory: (conn: AxiosInstance, logger?: any, cache?: any) =>
           new AxiosHttpProvider(conn, {
             logger,
             logging: opts?.logging,
             cache: opts?.cache as any,
-          }),
+          }, cache),
         inject: [
           HTTP_AXIOS_CONNECTION,
           { token: "LOGGER_PROVIDER", optional: true },
+          { token: opts?.cacheToken || "CACHE_PROVIDER", optional: true },
         ],
       },
     ];
@@ -64,7 +67,7 @@ export class HttpImplementationAxiosModule {
     return {
       module: HttpImplementationAxiosModule,
       providers,
-      exports: [HTTP_AXIOS_CONNECTION, HTTP_AXIOS_PROVIDER],
+      exports: [HTTP_AXIOS_CONNECTION, httpToken],
     };
   }
 }

@@ -156,6 +156,21 @@ Atualmente, os pacotes `http-client` e `keycloak` gerenciam cache interno de for
 
 **Objetivo:** Manter os pacotes leves e desacoplados, mas prontos para escala horizontal.
 
-## Publicação
+## 🚀 Exemplos Reais e Integrações
+
+Este monorepo suporta cenários complexos de produção:
+
+- **Logs Centralizados**: Configuração via `LoggerModule.forRootAsync`, ofuscação automática e suporte a logs estruturados (JSON).
+- **HTTP com Cache**: Suporte a Redis (`ioredis`) para ambientes distribuídos e cache em memória para local.
+- **Infraestrutura**: Configuração de Keycloak e Redis via `example/docker-compose.yml`.
+
+Para rodar o exemplo:
+```bash
+cd example
+docker-compose up -d
+pnpm run start:dev
+```
+
+## 📦 Publicação
 
 Veja `PUBLISHING.md` para o fluxo de publish (local dry-run e CI).

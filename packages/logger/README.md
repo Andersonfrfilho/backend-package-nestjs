@@ -13,7 +13,24 @@ import { Module } from "@nestjs/common";
 import { LoggerModule } from "@adatechnology/logger";
 
 @Module({
-  imports: [LoggerModule.forRoot()],
+  imports: [
+    // Opção 1: Configuração estática (forRoot)
+    LoggerModule.forRoot({
+      level: 'debug',
+      context: 'MyService',
+      isProduction: process.env.NODE_ENV === 'production',
+      colorize: true,
+    }),
+
+    // Opção 2: Configuração dinâmica (forRootAsync)
+    LoggerModule.forRootAsync({
+      useFactory: (configService: ConfigService) => ({
+        level: configService.get('LOG_LEVEL'),
+        isProduction: configService.get('NODE_ENV') === 'production',
+      }),
+      inject: [ConfigService],
+    }),
+  ],
 })
 export class AppModule {}
 ```

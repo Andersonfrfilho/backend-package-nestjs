@@ -2,13 +2,11 @@ import { DynamicModule, Module, Scope, Provider } from "@nestjs/common";
 import { LoggerProvider } from "./logger.provider";
 import { LOGGER_PROVIDER } from "./logger.token";
 import { WinstonImplementationModule } from "./implementations/winston/winston.logger.module";
-import type { WinstonModuleConfig } from "./implementations/winston/winston.logger.types";
+import type { LoggerConfig } from "./logger.config";
 
 @Module({})
 export class LoggerModule {
-  static forRoot(
-    config?: WinstonModuleConfig & { requestScoped?: boolean },
-  ): DynamicModule {
+  static forRoot(config?: LoggerConfig): DynamicModule {
     const implModule = WinstonImplementationModule.forRoot(config);
     const provider: Provider = {
       provide: LOGGER_PROVIDER,
@@ -22,6 +20,27 @@ export class LoggerModule {
       module: LoggerModule,
       imports: [implModule],
       providers: [provider],
+      exports: [LOGGER_PROVIDER],
+    };
+  }
+
+  static forRootAsync(options: {
+    imports?: any[];
+    useFactory: (...args: any[]) => Promise<LoggerConfig> | LoggerConfig;
+    inject?: any[];
+  }): DynamicModule {
+    return {
+      module: LoggerModule,
+      imports: [
+        ...(options.imports || []),
+        WinstonImplementationModule.forRootAsync(options),
+      ],
+      providers: [
+        {
+          provide: LOGGER_PROVIDER,
+          useClass: LoggerProvider,
+        },
+      ],
       exports: [LOGGER_PROVIDER],
     };
   }

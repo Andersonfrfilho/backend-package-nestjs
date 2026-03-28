@@ -29,12 +29,29 @@ let lastErrorInterceptorId: number | null = null;
 @UseHttpRequestId()
 export class HttpClientController {
   constructor(
-    @Inject(HTTP_PROVIDER) private readonly http: HttpProviderInterface,
+    @Inject('HTTP_REDIS') private readonly httpRedis: HttpProviderInterface,
+    @Inject('HTTP_LOCAL') private readonly httpLocal: HttpProviderInterface,
   ) {}
+
+  @Get('multi-cache-demo')
+  async multiCacheDemo() {
+    // Chamada 1: Usando Redis (ex.: PokeAPI)
+    const redisRes = await this.httpRedis.get({ url: '/pokemon/1' });
+    
+    // Chamada 2: Usando Local (ex.: JSONPlaceholder)
+    const localRes = await this.httpLocal.get({ url: '/users/1' });
+
+    return {
+      redisSource: 'PokeAPI via Redis Cache',
+      redisData: redisRes.data,
+      localSource: 'JSONPlaceholder via Local Cache',
+      localData: localRes.data,
+    };
+  }
 
   @Get('pokemon')
   async listPokemon() {
-    const res = await this.http.get({
+    const res = await this.httpRedis.get({
       url: '/pokemon?limit=20',
       config: {
         logContext: {
@@ -48,7 +65,7 @@ export class HttpClientController {
 
   @Get('pokemon/:id')
   async getOne(@Param('id') id: string) {
-    const res = await this.http.get({
+    const res = await this.httpRedis.get({
       url: `/pokemon/${id}`,
       config: {
         logContext: {
@@ -66,7 +83,7 @@ export class HttpClientController {
     @Headers('x-request-id') requestId?: string,
   ) {
     try {
-      const res = await this.http.get({
+      const res = await this.httpRedis.get({
         url: `/pokemon/${id}`,
         config: {
           headers: requestId ? { 'x-request-id': requestId } : undefined,
@@ -89,31 +106,31 @@ export class HttpClientController {
   // PokeAPI is read-only; keep create/modify/delete endpoints as examples
   @Post('post')
   async create(@Body() body: any) {
-    const res = await this.http.post({ url: '/pokemon', data: body }).catch((e) => e);
+    const res = await this.httpRedis.post({ url: '/pokemon', data: body }).catch((e) => e);
     return { status: res?.status ?? 500, data: res?.data };
   }
 
   @Put('put/:id')
   async replace(@Param('id') id: string, @Body() body: any) {
-    const res = await this.http.put({ url: `/pokemon/${id}`, data: body }).catch((e) => e);
+    const res = await this.httpRedis.put({ url: `/pokemon/${id}`, data: body }).catch((e) => e);
     return { status: res?.status ?? 500, data: res?.data };
   }
 
   @Patch('patch/:id')
   async modify(@Param('id') id: string, @Body() body: any) {
-    const res = await this.http.patch({ url: `/pokemon/${id}`, data: body }).catch((e) => e);
+    const res = await this.httpRedis.patch({ url: `/pokemon/${id}`, data: body }).catch((e) => e);
     return { status: res?.status ?? 500, data: res?.data };
   }
 
   @Delete('delete/:id')
   async remove(@Param('id') id: string) {
-    const res = await this.http.delete({ url: `/pokemon/${id}` }).catch((e) => e);
+    const res = await this.httpRedis.delete({ url: `/pokemon/${id}` }).catch((e) => e);
     return { status: res?.status ?? 500 };
   }
 
   @Head('head')
   async headReq(): Promise<{ status: number; headers: Record<string, any> }> {
-    const res = await this.http.head({ url: '/pokemon' });
+    const res = await this.httpRedis.head({ url: '/pokemon' });
     return {
       status: res.status,
       headers: res.headers as unknown as Record<string, any>,
@@ -122,19 +139,19 @@ export class HttpClientController {
 
   @Options('options')
   async optionsReq() {
-    const res = await this.http.options({ url: '/pokemon' });
+    const res = await this.httpRedis.options({ url: '/pokemon' });
     return { status: res.status };
   }
 
   // Observable example
   @Get('get-observable')
   getObservable(): Observable<any> {
-    return this.http.get$({ url: '/pokemon' });
+    return this.httpRedis.get$({ url: '/pokemon' });
   }
 
   @Get('request-generic')
   async requestGeneric() {
-    const res = await this.http.request({
+    const res = await this.httpRedis.request({
       method: HttpMethod.GET,
       url: '/pokemon',
       params: { limit: 5 },
@@ -148,7 +165,7 @@ export class HttpClientController {
 
   @Get('request-observable')
   requestObservable(): Observable<any> {
-    return this.http.request$({
+    return this.httpRedis.request$({
       method: HttpMethod.GET,
       url: '/pokemon',
       params: { limit: 5 },
@@ -161,7 +178,7 @@ export class HttpClientController {
 
   @Get('demo/decorator-controller')
   async demoDecoratorController() {
-    const res = await this.http.get({ url: '/pokemon/1' });
+    const res = await this.httpRedis.get({ url: '/pokemon/1' });
     return {
       decoratorScope: 'controller',
       pokemon: res.data,
@@ -171,7 +188,7 @@ export class HttpClientController {
   @Get('demo/decorator-method')
   @UseHttpRequestId({ headerName: 'x-request-id', autoGenerateIfMissing: true })
   async demoDecoratorMethod() {
-    const res = await this.http.get({ url: '/pokemon/2' });
+    const res = await this.httpRedis.get({ url: '/pokemon/2' });
     return {
       decoratorScope: 'method',
       pokemon: res.data,
@@ -180,60 +197,60 @@ export class HttpClientController {
 
   @Post('set-base-url')
   async setBaseUrl(@Body() body: { baseURL: string }) {
-    this.http.setBaseUrl(body.baseURL);
+    this.httpRedis.setBaseUrl(body.baseURL);
     return { baseURL: body.baseURL };
   }
 
   @Get('get-base-url')
   getBaseUrl() {
-    return { baseURL: this.http.getBaseUrl() };
+    return { baseURL: this.httpRedis.getBaseUrl() };
   }
 
   @Post('set-timeout')
   setTimeout(@Body() body: { timeout: number }) {
-    this.http.setDefaultTimeout(body.timeout);
+    this.httpRedis.setDefaultTimeout(body.timeout);
     return { timeout: body.timeout };
   }
 
   @Post('set-global-header')
   setGlobalHeader(@Body() body: { key: string; value: string }) {
-    this.http.setGlobalHeader({ key: body.key, value: body.value });
+    this.httpRedis.setGlobalHeader({ key: body.key, value: body.value });
     return { key: body.key, value: body.value };
   }
 
   @Post('remove-global-header')
   removeGlobalHeader(@Body() body: { key: string }) {
-    this.http.removeGlobalHeader(body.key);
+    this.httpRedis.removeGlobalHeader(body.key);
     return { removed: body.key };
   }
 
   @Get('global-headers')
   getGlobalHeaders() {
-    return this.http.getGlobalHeaders();
+    return this.httpRedis.getGlobalHeaders();
   }
 
   @Post('set-token')
   async setToken(@Body() body: { token: string; type?: string }) {
     const t = body.type ?? 'Bearer';
-    this.http.setAuthToken({ token: body.token, type: t });
+    this.httpRedis.setAuthToken({ token: body.token, type: t });
     return { auth: `${t} ${body.token}` };
   }
 
   @Post('clear-token')
   async clearToken() {
-    this.http.clearAuthToken();
+    this.httpRedis.clearAuthToken();
     return { ok: true };
   }
 
   @Post('add-interceptors')
   addInterceptors() {
-    lastRequestInterceptorId = this.http.addRequestInterceptor((cfg: any) => {
+    lastRequestInterceptorId = this.httpRedis.addRequestInterceptor((cfg: any) => {
       cfg.headers = cfg.headers || {};
       cfg.headers['X-Example-Request'] = '1';
       return cfg;
     });
 
-    lastResponseInterceptorId = this.http.addResponseInterceptor((res: any) => {
+    lastResponseInterceptorId = this.httpRedis.addResponseInterceptor((res: any) => {
       res.config = res.config || {};
       (res.config as any).__receivedAt = Date.now();
       return res;
@@ -248,9 +265,9 @@ export class HttpClientController {
   @Post('remove-interceptors')
   removeInterceptors() {
     if (lastRequestInterceptorId != null)
-      this.http.removeRequestInterceptor(lastRequestInterceptorId);
+      this.httpRedis.removeRequestInterceptor(lastRequestInterceptorId);
     if (lastResponseInterceptorId != null)
-      this.http.removeResponseInterceptor(lastResponseInterceptorId);
+      this.httpRedis.removeResponseInterceptor(lastResponseInterceptorId);
     lastRequestInterceptorId = null;
     lastResponseInterceptorId = null;
     return { removed: true };
@@ -258,7 +275,7 @@ export class HttpClientController {
 
   @Post('add-error-interceptor')
   addErrorInterceptor() {
-    lastErrorInterceptorId = this.http.addErrorInterceptor((error: any) => {
+    lastErrorInterceptorId = this.httpRedis.addErrorInterceptor((error: any) => {
       if (error && typeof error === 'object') {
         (error as any).__handledByExample = true;
       }
@@ -271,7 +288,7 @@ export class HttpClientController {
   @Post('remove-error-interceptor')
   removeErrorInterceptor() {
     if (lastErrorInterceptorId != null) {
-      this.http.removeErrorInterceptor(lastErrorInterceptorId);
+      this.httpRedis.removeErrorInterceptor(lastErrorInterceptorId);
       const removedId = lastErrorInterceptorId;
       lastErrorInterceptorId = null;
       return { removed: true, errorInterceptorId: removedId };
@@ -282,13 +299,13 @@ export class HttpClientController {
 
   @Post('clear-cache')
   clearCache(@Body() body?: { key?: string }) {
-    this.http.clearCache(body?.key);
+    this.httpRedis.clearCache(body?.key);
     return { cleared: body?.key ?? 'all' };
   }
 
   @Get('cache-demo')
   async cacheDemo() {
-    const first = await this.http.get({
+    const first = await this.httpRedis.get({
       url: '/pokemon/1',
       config: {
         cache: true,
@@ -300,7 +317,7 @@ export class HttpClientController {
       },
     });
 
-    const second = await this.http.get({
+    const second = await this.httpRedis.get({
       url: '/pokemon/1',
       config: {
         cache: true,

@@ -1,22 +1,4 @@
 
 > @adatechnology/auth-keycloak@0.0.2 build /Users/anderson.filho/Documents/personal/backend-package-nestjs/packages/keycloak
-> tsup
+> rm -rf dist && tsc -p tsconfig.build.json
 
-[34mCLI[39m Building entry: src/index.ts
-[34mCLI[39m Using tsconfig: tsconfig.tsup.json
-[34mCLI[39m tsup v8.5.1
-[34mCLI[39m Using tsup config: /Users/anderson.filho/Documents/personal/backend-package-nestjs/packages/keycloak/tsup.config.ts
-[34mCLI[39m Target: node16
-[34mCLI[39m Cleaning output folder
-[34mCJS[39m Build start
-[34mESM[39m Build start
-[33mCJS[39m [33mYou have emitDecoratorMetadata enabled but @swc/core was not installed, skipping swc plugin[39m
-[33mESM[39m [33mYou have emitDecoratorMetadata enabled but @swc/core was not installed, skipping swc plugin[39m
-[32mESM[39m [1mdist/index.mjs [22m[32m13.35 KB[39m
-[32mESM[39m ⚡️ Build success in 13ms
-[32mCJS[39m [1mdist/index.js [22m[32m14.65 KB[39m
-[32mCJS[39m ⚡️ Build success in 16ms
-DTS Build start
-DTS ⚡️ Build success in 565ms
-DTS dist/index.d.ts  3.39 KB
-DTS dist/index.d.mts 3.39 KB

@@ -78,6 +78,7 @@ export class AxiosHttpProvider implements AxiosHttpProviderInterface {
     this.cacheKeyPrefix = options?.cache?.keyPrefix ?? "";
 
     this.setupHttpLoggingInterceptors();
+    this.logger?.setContext?.("AxiosHttpProvider");
   }
 
   private setupHttpLoggingInterceptors(): void {
@@ -206,8 +207,8 @@ export class AxiosHttpProvider implements AxiosHttpProviderInterface {
   }
 
   private emitLog(type: HttpLogType, meta?: Record<string, unknown>): void {
-    const context = this.loggingConfig?.context || HTTP_CLIENT_LABEL;
-    const message = `[${type.toUpperCase()}] Request Processing`;
+    const context = this.loggingConfig?.context || "HttpClient";
+    const message = "Request Processing";
     const normalizedMeta = this.normalizeMetaForLogging(meta);
 
     if (this.logger) {
@@ -221,11 +222,11 @@ export class AxiosHttpProvider implements AxiosHttpProviderInterface {
     }
 
     if (type === LOG_TYPES.ERROR) {
-      console.error(`[${context}] ${message}`, normalizedMeta);
+      if (!this.logger) console.error(`[${context}] ${message}`, normalizedMeta);
       return;
     }
 
-    console.log(`[${context}] ${message}`, normalizedMeta);
+    if (!this.logger) console.log(`[${context}] ${message}`, normalizedMeta);
   }
 
   private buildLogMessage(
@@ -233,7 +234,7 @@ export class AxiosHttpProvider implements AxiosHttpProviderInterface {
     source?: string,
     requestId?: string,
   ): string {
-    return `[${type.toUpperCase()}] ${source ? `${source} - ` : ''}${HTTP_CLIENT_LABEL}`;
+    return `Request Processing${source ? ` (${source})` : ""}`;
   }
 
   private normalizeMetaForLogging(
@@ -862,7 +863,7 @@ export class AxiosHttpProvider implements AxiosHttpProviderInterface {
     try {
       const masked = AxiosHttpProvider.maskToken(token);
 
-      console.debug(`[AxiosHttpProvider] setAuthToken ${type} ${masked}`);
+      this.logger?.debug?.(`setAuthToken ${type} ${masked}`);
     } catch (err) {
       // swallow logging errors
     }
@@ -887,7 +888,7 @@ export class AxiosHttpProvider implements AxiosHttpProviderInterface {
       try {
         processedError = await interceptor(processedError);
       } catch (interceptorError) {
-        console.warn("Error interceptor failed:", interceptorError);
+        this.logger?.warn?.("Error interceptor failed", interceptorError);
       }
     }
 

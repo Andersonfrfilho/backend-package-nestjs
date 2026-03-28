@@ -15,6 +15,7 @@ import { BaseAppError } from "@adatechnology/shared";
 @Injectable()
 export class RolesGuard implements CanActivate {
   constructor(
+    @Inject(Reflector)
     private readonly reflector: Reflector,
     @Optional()
     @Inject(KEYCLOAK_CONFIG)
@@ -115,4 +116,4 @@ export class RolesGuard implements CanActivate {
   }
 }
 
-export default RolesGuard;
+

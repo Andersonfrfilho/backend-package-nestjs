@@ -6,9 +6,13 @@ description: Global patterns for NestJS monorepo. Use for cross-package tasks, d
 # 🏗️ Backend Monorepo Standards
 
 ## 🎯 Architecture Strategy
-- **Format**: Strictly **CommonJS (CJS)** for all packages to ensure NestJS runtime stability.
+- **Format**: Strictly **CommonJS (CJS)** for all packages.
 - **Linking**: Use `pnpm workspace:*` for internal dependencies.
 - **Bundling**: Private packages like `@adatechnology/shared` must be bundled into public ones using `tsup --no-external`.
+- **Standards**: 
+  - Use `forRootAsync` for dynamic module configuration.
+  - Logger: Standardized `LoggerConfig` (level, context, production-ready outputs).
+  - Cache: Support flexible providers (In-Memory/Redis) via `CACHE_PROVIDER`.
 
 ## 🛠️ Development Workflow
 - **Full Build**: `pnpm run build` from root.

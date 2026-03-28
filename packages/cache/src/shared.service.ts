@@ -1,6 +1,5 @@
 import { Inject, Injectable, Optional } from "@nestjs/common";
 import type { ExampleOptions, ExampleServiceInterface } from "./types";
-import { EXAMPLE_OPTIONS_TOKEN } from "./shared.module";
 
 @Injectable()
 export class ExampleService implements ExampleServiceInterface {
@@ -11,7 +10,6 @@ export class ExampleService implements ExampleServiceInterface {
   ) {}
 
   getPrefix(): string {
-    console.log("ExampleService options:", this.options);
 
     return this.options?.prefix ?? "app";
   }

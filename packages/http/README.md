@@ -22,12 +22,33 @@ import { HttpModule } from "@adatechnology/http-client";
 
 @Module({
   imports: [
-    // conveniência: importa a implementação Axios internamente
+    // Opção 1: Configuração estática (forRoot)
     HttpModule.forRoot({ baseURL: "https://api.example.com", timeout: 10000 }),
+
+    // Opção 2: Configuração dinâmica (forRootAsync) - Ideal para usar ConfigService
+    HttpModule.forRootAsync({
+      useFactory: (configService: ConfigService) => ({
+        config: { baseURL: configService.get('API_URL') },
+        options: {
+          useCache: true,
+          cache: {
+            defaultTtl: 600,
+            redisOptions: {
+              host: configService.get('REDIS_HOST'),
+              port: configService.get('REDIS_PORT'),
+            }
+          }
+        }
+      }),
+      inject: [ConfigService],
+    }),
   ],
 })
 export class AppModule {}
 ```
+
+### Cache com Redis
+Este pacote suporta cache em memória (padrão) ou via Redis. Para usar Redis, forneça `redisOptions` na configuração do módulo (conforme exemplo acima).
 
 Após isso, injete o provider padrão `HTTP_PROVIDER` no seu serviço:
 

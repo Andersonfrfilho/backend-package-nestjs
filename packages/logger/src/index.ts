@@ -7,3 +7,5 @@ export type {
 } from "./logger.interface";
 export { RequestContextMiddleware } from './middleware/request-context.middleware';
 export { getContext, runWithContext } from './context/async-context.service';
+export type { LoggerConfig } from './logger.config';
+export { DEFAULT_LOGGER_CONFIG } from './logger.config';

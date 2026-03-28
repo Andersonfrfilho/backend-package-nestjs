@@ -1,0 +1,37 @@
+import type { WinstonModuleConfig } from './implementations/winston/winston.logger.types';
+import { LoggerLevel } from './logger.interface';
+
+export interface LoggerConfig extends WinstonModuleConfig {
+  /**
+   * Define se o provider do logger deve ser request-scoped
+   */
+  requestScoped?: boolean;
+
+  /**
+   * Nível de log padrão (string compatível com winston)
+   */
+  level?: LoggerLevel | string;
+
+  /**
+   * Contexto padrão para os logs
+   */
+  context?: string;
+
+  /**
+   * Define se o log deve ser formatado para produção (ex.: JSON)
+   */
+  isProduction?: boolean;
+
+  /**
+   * Define se deve colorir a saída (útil para desenvolvimento local)
+   */
+  colorize?: boolean;
+}
+
+export const DEFAULT_LOGGER_CONFIG: LoggerConfig = {
+  requestScoped: false,
+  level: "info",
+  colorize: true,
+};
+
+export default DEFAULT_LOGGER_CONFIG;

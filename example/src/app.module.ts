@@ -16,7 +16,12 @@ import { LoggerModule, RequestContextMiddleware } from '@adatechnology/logger';
 @Module({
   imports: [
     // register the example library with options
-    LoggerModule.forRoot(),
+    LoggerModule.forRoot({
+      level: 'debug',
+      context: 'ExampleApp',
+      isProduction: process.env.NODE_ENV === 'production',
+      colorize: true,
+    }),
     ExampleModule.forRoot({ prefix: 'demo', enabled: true }),
     // example http-client demo module
     // demonstrates usage of the shared http-client package against jsonplaceholder
@@ -47,7 +52,6 @@ import { LoggerModule, RequestContextMiddleware } from '@adatechnology/logger';
   controllers: [AppController],
   providers: [
     AppService,
-    RolesGuard,
     // register the Keycloak HTTP interceptor as a global interceptor (useExisting to reuse provider from KeycloakModule)
     { provide: APP_INTERCEPTOR, useExisting: KEYCLOAK_HTTP_INTERCEPTOR },
   ],

@@ -11,13 +11,14 @@
     "dist"
   ],
   "scripts": {
-    "build": "tsup",
+    "build": "rm -rf dist && tsc -p tsconfig.build.json",
     "build:watch": "tsup --watch",
     "check": "tsc -p tsconfig.json --noEmit",
     "test": "echo \"no tests\""
   },
   "dependencies": {
-    "@adatechnology/http-client": "^0.0.2",
+    "@adatechnology/http-client": "workspace:*",
+    "@adatechnology/logger": "workspace:*",
     "@adatechnology/shared": "workspace:*"
   },
   "peerDependencies": {

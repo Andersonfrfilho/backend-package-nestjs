@@ -13,6 +13,41 @@ export enum HttpMethod {
   OPTIONS = "OPTIONS",
 }
 
+export interface HttpModuleOptions {
+  /**
+   * Token de injeção opcional. Útil para registrar múltiplas instâncias do HttpModule
+   * com configurações diferentes no mesmo projeto. Padrão: HTTP_PROVIDER.
+   */
+  provide?: any;
+  /**
+   * Token de injeção opcional para o provedor de cache. Útil quando se quer isolar
+   * o cache de uma instância específica. Padrão: CACHE_PROVIDER.
+   */
+  cacheToken?: any;
+  useCache?: boolean;
+  logging?: HttpLoggingConfig;
+  cache?: {
+    defaultTtl?: number;
+    keyPrefix?: string;
+    /**
+     * Opções para o provedor de cache Redis.
+     */
+    redisOptions?: any;
+  };
+  /**
+   * Provider customizado para cache. Pode ser:
+   * - um token/string (quando o provider é registrado em outro módulo),
+   * - um Provider do Nest (useClass/useValue/useFactory),
+   * - ou a referência ao provider (quando já foi registrado em outro módulo).
+   */
+  cacheProvider?: any;
+  /**
+   * Instância concreta do provedor de cache (ex.: cliente Redis ou um objeto que implemente a interface esperada).
+   * Se fornecido, será registrado como `CACHE_PROVIDER` com `useValue`.
+   */
+  cacheInstance?: any;
+}
+
 /**
  * Content types for HTTP requests
  */

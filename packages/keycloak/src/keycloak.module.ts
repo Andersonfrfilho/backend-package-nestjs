@@ -1,10 +1,12 @@
 import { Module, DynamicModule } from "@nestjs/common";
+import { Reflector } from "@nestjs/core";
 import { HTTP_PROVIDER, HttpModule } from "@adatechnology/http-client";
 import type { HttpProviderInterface } from "@adatechnology/http-client";
 import type { AxiosRequestConfig, AxiosInstance } from "axios";
 
 import { KeycloakClient } from "./keycloak.client";
 import { KeycloakHttpInterceptor } from "./keycloak.http.interceptor";
+import { RolesGuard } from "./roles.guard";
 import { KEYCLOAK_CLIENT, KEYCLOAK_HTTP_INTERCEPTOR } from "./keycloak.token";
 import { KeycloakConfig } from "./keycloak.interface";
 import { KEYCLOAK_CONFIG } from "./keycloak.token";
@@ -20,6 +22,7 @@ export class KeycloakModule {
       global: true,
       imports: [HttpModule.forRoot(httpConfig)],
       providers: [
+        { provide: Reflector, useClass: Reflector },
         { provide: KEYCLOAK_CONFIG, useValue: config },
         {
           provide: KEYCLOAK_CLIENT,
@@ -33,8 +36,15 @@ export class KeycloakModule {
           provide: KEYCLOAK_HTTP_INTERCEPTOR,
           useFactory: () => new KeycloakHttpInterceptor(),
         },
+        RolesGuard,
       ],
-      exports: [KEYCLOAK_CLIENT, KEYCLOAK_HTTP_INTERCEPTOR],
+      exports: [
+        Reflector,
+        KEYCLOAK_CLIENT,
+        KEYCLOAK_HTTP_INTERCEPTOR,
+        KEYCLOAK_CONFIG,
+        RolesGuard,
+      ],
     };
   }
 }
