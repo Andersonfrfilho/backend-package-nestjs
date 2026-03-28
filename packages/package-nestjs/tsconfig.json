@@ -4,6 +4,8 @@
     "rootDir": "src",
     "outDir": "dist",
     "composite": true,
+    "declaration": true,
+    "declarationDir": "dist",
     "module": "CommonJS",
     "moduleResolution": "node"
   },

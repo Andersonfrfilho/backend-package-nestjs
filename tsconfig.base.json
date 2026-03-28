@@ -1,14 +1,13 @@
 {
   "compilerOptions": {
     "target": "ES2022",
-    "module": "ESNext",
-    "moduleResolution": "bundler",
-    "declaration": true,
-    "outDir": "dist",
-    "composite": true,
+    "module": "CommonJS",
+    "moduleResolution": "Node",
     "emitDecoratorMetadata": true,
     "experimentalDecorators": true,
     "skipLibCheck": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
     "baseUrl": ".",
     "paths": {
       "@adatechnology/package-nestjs": ["packages/package-nestjs/src"],
@@ -21,7 +20,8 @@
       "@adatechnology/auth-keycloak/*": ["packages/keycloak/src/*"],
       "@adatechnology/shared": ["packages/shared/src"],
       "@adatechnology/shared/*": ["packages/shared/src/*"],
-
+      "@adatechnology/cache": ["packages/cache/src"],
+      "@adatechnology/cache/*": ["packages/cache/src/*"],
       "#shared": ["packages/shared/src"],
       "#shared/*": ["packages/shared/src/*"]
     }

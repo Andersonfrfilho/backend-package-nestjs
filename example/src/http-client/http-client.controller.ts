@@ -34,10 +34,13 @@ export class HttpClientController {
 
   @Get('pokemon')
   async listPokemon() {
-    const res = await this.http.get('/pokemon?limit=20', {
-      logContext: {
-        className: HttpClientController.name,
-        methodName: this.listPokemon.name,
+    const res = await this.http.get({
+      url: '/pokemon?limit=20',
+      config: {
+        logContext: {
+          className: HttpClientController.name,
+          methodName: this.listPokemon.name,
+        },
       },
     });
     return res.data;
@@ -45,10 +48,13 @@ export class HttpClientController {
 
   @Get('pokemon/:id')
   async getOne(@Param('id') id: string) {
-    const res = await this.http.get(`/pokemon/${id}`, {
-      logContext: {
-        className: HttpClientController.name,
-        methodName: this.getOne.name,
+    const res = await this.http.get({
+      url: `/pokemon/${id}`,
+      config: {
+        logContext: {
+          className: HttpClientController.name,
+          methodName: this.getOne.name,
+        },
       },
     });
     return res.data;
@@ -60,12 +66,15 @@ export class HttpClientController {
     @Headers('x-request-id') requestId?: string,
   ) {
     try {
-      const res = await this.http.get(`/pokemon/${id}`, {
-        headers: requestId ? { 'x-request-id': requestId } : undefined,
-        logContext: {
-          className: HttpClientController.name,
-          methodName: this.getOneWithRequestId.name,
-          requestId,
+      const res = await this.http.get({
+        url: `/pokemon/${id}`,
+        config: {
+          headers: requestId ? { 'x-request-id': requestId } : undefined,
+          logContext: {
+            className: HttpClientController.name,
+            methodName: this.getOneWithRequestId.name,
+            requestId,
+          },
         },
       });
       return res.data;
@@ -80,31 +89,31 @@ export class HttpClientController {
   // PokeAPI is read-only; keep create/modify/delete endpoints as examples
   @Post('post')
   async create(@Body() body: any) {
-    const res = await this.http.post('/pokemon', body).catch((e) => e);
+    const res = await this.http.post({ url: '/pokemon', data: body }).catch((e) => e);
     return { status: res?.status ?? 500, data: res?.data };
   }
 
   @Put('put/:id')
   async replace(@Param('id') id: string, @Body() body: any) {
-    const res = await this.http.put(`/pokemon/${id}`, body).catch((e) => e);
+    const res = await this.http.put({ url: `/pokemon/${id}`, data: body }).catch((e) => e);
     return { status: res?.status ?? 500, data: res?.data };
   }
 
   @Patch('patch/:id')
   async modify(@Param('id') id: string, @Body() body: any) {
-    const res = await this.http.patch(`/pokemon/${id}`, body).catch((e) => e);
+    const res = await this.http.patch({ url: `/pokemon/${id}`, data: body }).catch((e) => e);
     return { status: res?.status ?? 500, data: res?.data };
   }
 
   @Delete('delete/:id')
   async remove(@Param('id') id: string) {
-    const res = await this.http.delete(`/pokemon/${id}`).catch((e) => e);
+    const res = await this.http.delete({ url: `/pokemon/${id}` }).catch((e) => e);
     return { status: res?.status ?? 500 };
   }
 
   @Head('head')
   async headReq(): Promise<{ status: number; headers: Record<string, any> }> {
-    const res = await this.http.head('/pokemon');
+    const res = await this.http.head({ url: '/pokemon' });
     return {
       status: res.status,
       headers: res.headers as unknown as Record<string, any>,
@@ -113,14 +122,14 @@ export class HttpClientController {
 
   @Options('options')
   async optionsReq() {
-    const res = await this.http.options('/pokemon');
+    const res = await this.http.options({ url: '/pokemon' });
     return { status: res.status };
   }
 
   // Observable example
   @Get('get-observable')
   getObservable(): Observable<any> {
-    return this.http.get$('/pokemon');
+    return this.http.get$({ url: '/pokemon' });
   }
 
   @Get('request-generic')
@@ -152,7 +161,7 @@ export class HttpClientController {
 
   @Get('demo/decorator-controller')
   async demoDecoratorController() {
-    const res = await this.http.get('/pokemon/1');
+    const res = await this.http.get({ url: '/pokemon/1' });
     return {
       decoratorScope: 'controller',
       pokemon: res.data,
@@ -162,7 +171,7 @@ export class HttpClientController {
   @Get('demo/decorator-method')
   @UseHttpRequestId({ headerName: 'x-request-id', autoGenerateIfMissing: true })
   async demoDecoratorMethod() {
-    const res = await this.http.get('/pokemon/2');
+    const res = await this.http.get({ url: '/pokemon/2' });
     return {
       decoratorScope: 'method',
       pokemon: res.data,
@@ -188,7 +197,7 @@ export class HttpClientController {
 
   @Post('set-global-header')
   setGlobalHeader(@Body() body: { key: string; value: string }) {
-    this.http.setGlobalHeader(body.key, body.value);
+    this.http.setGlobalHeader({ key: body.key, value: body.value });
     return { key: body.key, value: body.value };
   }
 
@@ -206,7 +215,7 @@ export class HttpClientController {
   @Post('set-token')
   async setToken(@Body() body: { token: string; type?: string }) {
     const t = body.type ?? 'Bearer';
-    this.http.setAuthToken(body.token, t);
+    this.http.setAuthToken({ token: body.token, type: t });
     return { auth: `${t} ${body.token}` };
   }
 
@@ -218,14 +227,15 @@ export class HttpClientController {
 
   @Post('add-interceptors')
   addInterceptors() {
-    lastRequestInterceptorId = this.http.addRequestInterceptor((cfg) => {
+    lastRequestInterceptorId = this.http.addRequestInterceptor((cfg: any) => {
       cfg.headers = cfg.headers || {};
       cfg.headers['X-Example-Request'] = '1';
       return cfg;
     });
 
-    lastResponseInterceptorId = this.http.addResponseInterceptor((res) => {
-      res.config.__receivedAt = Date.now();
+    lastResponseInterceptorId = this.http.addResponseInterceptor((res: any) => {
+      res.config = res.config || {};
+      (res.config as any).__receivedAt = Date.now();
       return res;
     });
 
@@ -248,7 +258,7 @@ export class HttpClientController {
 
   @Post('add-error-interceptor')
   addErrorInterceptor() {
-    lastErrorInterceptorId = this.http.addErrorInterceptor((error) => {
+    lastErrorInterceptorId = this.http.addErrorInterceptor((error: any) => {
       if (error && typeof error === 'object') {
         (error as any).__handledByExample = true;
       }
@@ -278,21 +288,27 @@ export class HttpClientController {
 
   @Get('cache-demo')
   async cacheDemo() {
-    const first = await this.http.get('/pokemon/1', {
-      cache: true,
-      cacheTtl: 10000,
-      logContext: {
-        className: HttpClientController.name,
-        methodName: this.cacheDemo.name,
+    const first = await this.http.get({
+      url: '/pokemon/1',
+      config: {
+        cache: true,
+        cacheTtl: 10000,
+        logContext: {
+          className: HttpClientController.name,
+          methodName: this.cacheDemo.name,
+        },
       },
     });
 
-    const second = await this.http.get('/pokemon/1', {
-      cache: true,
-      cacheTtl: 10000,
-      logContext: {
-        className: HttpClientController.name,
-        methodName: this.cacheDemo.name,
+    const second = await this.http.get({
+      url: '/pokemon/1',
+      config: {
+        cache: true,
+        cacheTtl: 10000,
+        logContext: {
+          className: HttpClientController.name,
+          methodName: this.cacheDemo.name,
+        },
       },
     });
 

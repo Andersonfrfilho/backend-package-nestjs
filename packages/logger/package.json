@@ -9,8 +9,8 @@
   "types": "dist/index.d.ts",
   "scripts": {
     "prebuild": "rm -rf dist",
-    "build": "tsup src/index.ts",
-    "build:watch": "tsup src/index.ts --watch",
+    "build": "tsup src/index.ts --dts --tsconfig tsconfig.tsup.json",
+    "build:watch": "tsup src/index.ts --watch --dts --tsconfig tsconfig.tsup.json",
     "check": "tsc -p tsconfig.json --noEmit"
   },
   "peerDependencies": {

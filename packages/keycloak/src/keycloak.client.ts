@@ -1,6 +1,7 @@
-import { Inject, Injectable } from "@nestjs/common";
+import { Inject, Injectable, Optional } from "@nestjs/common";
 import { HTTP_PROVIDER } from "@adatechnology/http-client";
 import type { HttpProviderInterface } from "@adatechnology/http-client";
+import { LOGGER_PROVIDER, LoggerProviderInterface } from "@adatechnology/logger";
 
 import type {
   KeycloakClientInterface,
@@ -16,12 +17,23 @@ function extractErrorInfo(err: unknown) {
     const statusCode =
       typeof resp.status === "number" ? (resp.status as number) : undefined;
     const details = resp.data ?? undefined;
-    const keycloakError =
+    let keycloakError: string | undefined = undefined;
+    if (
       details &&
       typeof details === "object" &&
       "error" in (details as Record<string, unknown>)
-        ? (details as Record<string, unknown>).error
-        : undefined;
+    ) {
+      const raw = (details as Record<string, unknown>).error;
+      if (typeof raw === "string") keycloakError = raw;
+      else {
+        try {
+          keycloakError = JSON.stringify(raw);
+        } catch {
+          keycloakError = String(raw);
+        }
+      }
+    }
+
     return { statusCode, details, keycloakError };
   }
   return {
@@ -40,22 +52,33 @@ export class KeycloakClient implements KeycloakClientInterface {
   constructor(
     private readonly config: KeycloakConfig,
     @Inject(HTTP_PROVIDER) private readonly httpProvider: HttpProviderInterface,
-  ) {}
+    @Optional() @Inject(LOGGER_PROVIDER) private readonly logger?: LoggerProviderInterface,
+  ) {
+    this.logger?.setContext?.("KeycloakClient");
+  }
 
   async getAccessToken(): Promise<string> {
+    this.logger?.debug?.("getAccessToken - Start");
     // Check cache
     const now = Date.now();
     if (this.tokenCache && now < this.tokenCache.expiresAt) {
+      this.logger?.debug?.("getAccessToken - Returning cached token");
       return this.tokenCache.token;
     }
 
-    if (this.tokenPromise) return this.tokenPromise;
+    if (this.tokenPromise) {
+      this.logger?.debug?.("getAccessToken - Waiting for existing token request");
+      return this.tokenPromise;
+    }
 
     this.tokenPromise = (async (): Promise<string> => {
       try {
         const tokenResponse = await this.requestToken();
-        const expiresAt = Date.now() + (tokenResponse.expires_in - 60) * 1000;
+        const expiresAt = this.config.tokenCacheTtl
+          ? Date.now() + this.config.tokenCacheTtl
+          : Date.now() + (tokenResponse.expires_in - 60) * 1000;
         this.tokenCache = { token: tokenResponse.access_token, expiresAt };
+        this.logger?.debug?.("getAccessToken - Token obtained and cached");
         return tokenResponse.access_token;
       } finally {
         this.tokenPromise = null;
@@ -69,7 +92,9 @@ export class KeycloakClient implements KeycloakClientInterface {
     username: string;
     password: string;
   }) {
-    const { username, password } = params;
+    const { username } = params;
+    this.logger?.info?.(`getTokenWithCredentials - Start for user: ${username}`);
+    const { password } = params;
     const tokenUrl = `${this.config.baseUrl}/realms/${this.config.realm}/protocol/openid-connect/token`;
 
     const body = new URLSearchParams();
@@ -93,9 +118,11 @@ export class KeycloakClient implements KeycloakClientInterface {
         },
       });
 
+      this.logger?.info?.(`getTokenWithCredentials - Success for user: ${username}`);
       return response.data;
     } catch (err: unknown) {
       const { statusCode, details, keycloakError } = extractErrorInfo(err);
+      this.logger?.error?.(`getTokenWithCredentials - Failed for user: ${username}`, { statusCode, keycloakError });
       throw new KeycloakError("Failed to obtain token with credentials", {
         statusCode,
         details,
@@ -105,6 +132,7 @@ export class KeycloakClient implements KeycloakClientInterface {
   }
 
   private async requestToken(): Promise<KeycloakTokenResponse> {
+    this.logger?.debug?.("requestToken - Start");
     const tokenUrl = `${this.config.baseUrl}/realms/${this.config.realm}/protocol/openid-connect/token`;
 
     const data = new URLSearchParams();
@@ -126,17 +154,19 @@ export class KeycloakClient implements KeycloakClientInterface {
       }
     }
 
-    const response = await this.httpProvider.post<KeycloakTokenResponse>({
-      url: tokenUrl,
-      data,
-      config: {
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      },
-    });
     try {
+      const response = await this.httpProvider.post<KeycloakTokenResponse>({
+        url: tokenUrl,
+        data,
+        config: {
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        },
+      });
+      this.logger?.debug?.("requestToken - Success");
       return response.data;
     } catch (err: unknown) {
       const { statusCode, details, keycloakError } = extractErrorInfo(err);
+      this.logger?.error?.("requestToken - Failed", { statusCode, keycloakError });
       throw new KeycloakError("Failed to request token", {
         statusCode,
         details,
@@ -146,6 +176,7 @@ export class KeycloakClient implements KeycloakClientInterface {
   }
 
   async refreshToken(refreshToken: string): Promise<KeycloakTokenResponse> {
+    this.logger?.debug?.("refreshToken - Start");
     const tokenUrl = `${this.config.baseUrl}/realms/${this.config.realm}/protocol/openid-connect/token`;
 
     const data = new URLSearchParams();
@@ -156,21 +187,25 @@ export class KeycloakClient implements KeycloakClientInterface {
       data.append("client_secret", this.config.credentials.clientSecret);
     }
 
-    const response = await this.httpProvider.post<KeycloakTokenResponse>({
-      url: tokenUrl,
-      data,
-      config: {
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      },
-    });
-
     try {
-      const expiresAt = Date.now() + (response.data.expires_in - 60) * 1000;
+      const response = await this.httpProvider.post<KeycloakTokenResponse>({
+        url: tokenUrl,
+        data,
+        config: {
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        },
+      });
+
+      const expiresAt = this.config.tokenCacheTtl
+        ? Date.now() + this.config.tokenCacheTtl
+        : Date.now() + (response.data.expires_in - 60) * 1000;
       this.tokenCache = { token: response.data.access_token, expiresAt };
 
+      this.logger?.debug?.("refreshToken - Success");
       return response.data;
     } catch (err: unknown) {
       const { statusCode, details, keycloakError } = extractErrorInfo(err);
+      this.logger?.error?.("refreshToken - Failed", { statusCode, keycloakError });
       throw new KeycloakError("Failed to refresh token", {
         statusCode,
         details,
@@ -180,6 +215,7 @@ export class KeycloakClient implements KeycloakClientInterface {
   }
 
   async validateToken(token: string): Promise<boolean> {
+    this.logger?.debug?.("validateToken - Start");
     try {
       const introspectUrl = `${this.config.baseUrl}/realms/${this.config.realm}/protocol/openid-connect/token/introspect`;
 
@@ -198,9 +234,12 @@ export class KeycloakClient implements KeycloakClientInterface {
         },
       });
 
-      return response.data?.active === true;
+      const active = response.data?.active === true;
+      this.logger?.debug?.(`validateToken - Success (Active: ${active})`);
+      return active;
     } catch (error: unknown) {
       const { statusCode, details, keycloakError } = extractErrorInfo(error);
+      this.logger?.error?.("validateToken - Failed", { statusCode, keycloakError });
       // wrap introspection errors for callers
       throw new KeycloakError("Token introspection failed", {
         statusCode,
@@ -211,6 +250,7 @@ export class KeycloakClient implements KeycloakClientInterface {
   }
 
   async getUserInfo(token: string): Promise<Record<string, unknown>> {
+    this.logger?.debug?.("getUserInfo - Start");
     const userInfoUrl = `${this.config.baseUrl}/realms/${this.config.realm}/protocol/openid-connect/userinfo`;
     try {
       const response = await this.httpProvider.get<Record<string, unknown>>({
@@ -218,9 +258,11 @@ export class KeycloakClient implements KeycloakClientInterface {
         config: { headers: { Authorization: `Bearer ${token}` } },
       });
 
+      this.logger?.debug?.("getUserInfo - Success");
       return response.data;
     } catch (err: unknown) {
       const { statusCode, details, keycloakError } = extractErrorInfo(err);
+      this.logger?.error?.("getUserInfo - Failed", { statusCode, keycloakError });
       throw new KeycloakError("Failed to retrieve userinfo", {
         statusCode,
         details,

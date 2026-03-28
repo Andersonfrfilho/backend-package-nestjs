@@ -35,4 +35,5 @@ export interface HttpLoggingConfig {
 export type AxiosHttpProviderOptions = {
   logger?: HttpExternalLogger;
   logging?: HttpLoggingConfig;
+  cache?: { defaultTtl?: number; keyPrefix?: string };
 };

@@ -108,6 +108,7 @@ export interface HttpRequestConfig {
   retryDelay?: number;
   cache?: boolean; // Enable/disable caching for this request
   cacheTtl?: number; // Cache TTL in milliseconds
+  cacheKey?: string; // Optional explicit cache key to use for this request
   /**
    * Metadados opcionais para logging (origem da chamada e requestId).
    */

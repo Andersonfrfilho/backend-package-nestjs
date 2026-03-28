@@ -149,8 +149,33 @@ importers:
         specifier: ^8.20.0
         version: 8.56.1(eslint@9.39.3)(typescript@5.9.3)
 
+  packages/cache:
+    dependencies:
+      '@adatechnology/logger':
+        specifier: workspace:*
+        version: link:../logger
+      '@adatechnology/shared':
+        specifier: workspace:*
+        version: link:../shared
+      '@nestjs/common':
+        specifier: ^11.0.16
+        version: 11.1.16(reflect-metadata@0.2.2)(rxjs@7.8.2)
+      '@nestjs/core':
+        specifier: ^11
+        version: 11.1.16(@nestjs/common@11.1.16(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/platform-express@11.1.16)(reflect-metadata@0.2.2)(rxjs@7.8.2)
+    devDependencies:
+      tsup:
+        specifier: ^8.5.1
+        version: 8.5.1(postcss@8.5.8)(typescript@5.9.3)
+
   packages/http:
     dependencies:
+      '@adatechnology/cache':
+        specifier: workspace:*
+        version: link:../cache
+      '@adatechnology/logger':
+        specifier: workspace:*
+        version: link:../logger
       '@nestjs/common':
         specifier: ^11.0.16
         version: 11.1.16(reflect-metadata@0.2.2)(rxjs@7.8.2)
@@ -169,7 +194,10 @@ importers:
     dependencies:
       '@adatechnology/http-client':
         specifier: ^0.0.2
-        version: link:../http
+        version: 0.0.2(@nestjs/common@11.1.16(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@11.1.14)
+      '@adatechnology/shared':
+        specifier: workspace:*
+        version: link:../shared
       '@nestjs/common':
         specifier: ^11.0.16
         version: 11.1.16(reflect-metadata@0.2.2)(rxjs@7.8.2)
@@ -221,6 +249,12 @@ importers:
   packages/shared: {}
 
 packages:
+
+  '@adatechnology/http-client@0.0.2':
+    resolution: {integrity: sha512-eLSbyX/EsiVmACscmN6CUDxrergv5Trmp/QWgCEkaEHPei+Vkh3mAp6x839c61jz5l5sgHaRvDrplWYipxXN7Q==}
+    peerDependencies:
+      '@nestjs/common': ^11.0.16
+      '@nestjs/core': ^11
 
   '@algolia/abtesting@1.15.2':
     resolution: {integrity: sha512-rF7vRVE61E0QORw8e2NNdnttcl3jmFMWS9B4hhdga12COe+lMa26bQLfcBn/Nbp9/AF/8gXdaRCPsVns3CnjsA==}
@@ -4508,6 +4542,11 @@ packages:
     resolution: {integrity: sha512-bXE4cR/kVZhKZX/RjPEflHaKVhUVl85noU3v6b8apfQEc1x4A+zBxjZ4lN8LqGd6WZ3dl98pY4o717VFmoPp+A==}
 
 snapshots:
+
+  '@adatechnology/http-client@0.0.2(@nestjs/common@11.1.16(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@11.1.14)':
+    dependencies:
+      '@nestjs/common': 11.1.16(reflect-metadata@0.2.2)(rxjs@7.8.2)
+      '@nestjs/core': 11.1.14(@nestjs/common@11.1.16(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/platform-express@11.1.16)(reflect-metadata@0.2.2)(rxjs@7.8.2)
 
   '@algolia/abtesting@1.15.2':
     dependencies:

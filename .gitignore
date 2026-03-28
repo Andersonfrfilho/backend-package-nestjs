@@ -1,18 +1,45 @@
-node_modules/
-dist/
+# Node & Typescript
+node_modules
+dist
+dist-server
+lib-cov
+coverage
+.nyc_output
+*.tsbuildinfo
+*.log
 
-# VitePress (docs) - artefatos gerados
-docs/.vitepress/cache/
-docs/.vitepress/dist/
+# Turbo
+.turbo
 
-# ignore compiled JS and source maps from per-package builds
-packages/*/src/**/*.js
-packages/*/src/**/*.js.map
-packages/*/src/**/*.d.ts
-packages/*/dist
-.turbo/
+# Environment
+.env
+.env.*
+!.env.example
 
-# TypeScript incremental build info
-**/*.tsbuildinfo
+# OS
+.DS_Store
+Thumbs.db
 
-.npmrc
+# VSCode
+.vscode/*
+!.vscode/extensions.json
+!.vscode/mcp.json
+
+# IDEs
+.idea
+.project
+.classpath
+.c9/
+*.launch
+*.sublime-project
+*.sublime-workspace
+
+# Temporary
+tmp/
+temp/
+out/
+build/
+
+# PNPM
+pnpm-lock.yaml
+pnpm-workspace.yaml.bak

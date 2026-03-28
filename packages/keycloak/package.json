@@ -17,7 +17,8 @@
     "test": "echo \"no tests\""
   },
   "dependencies": {
-    "@adatechnology/http-client": "^0.0.2"
+    "@adatechnology/http-client": "^0.0.2",
+    "@adatechnology/shared": "workspace:*"
   },
   "peerDependencies": {
     "@nestjs/common": "^11.0.16",

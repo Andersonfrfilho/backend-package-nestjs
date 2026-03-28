@@ -6,7 +6,7 @@ import {
   LoggerLevel,
   type LogParams,
 } from "../../logger.interface";
-import { Obfuscator } from "./winston.logger.types";
+import type { Obfuscator } from "./winston.logger.types";
 import { getContext } from "../../context/async-context.service";
 import { EMPTY_STRING } from "../../logger.constant";
 import { WINSTON_RAW, WINSTON_OBFUSCATOR } from "./winston.logger.token";

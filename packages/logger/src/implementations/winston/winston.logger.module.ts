@@ -13,11 +13,20 @@ import { buildDefaultObfuscator } from "../../obfuscator";
 @Module({})
 export class WinstonImplementationModule {
   static forRoot(config?: WinstonModuleConfig): DynamicModule {
+    // Custom format to match [requestId][context][level] message pattern
+    const customFormat = format.printf(({ level, message, timestamp, context, meta }) => {
+      const requestId = (meta as any)?.requestId || 'no-request-id';
+      const ctx = context || (meta as any)?.context || 'App';
+      const time = timestamp || new Date().toISOString();
+      
+      return `[${time}] [${requestId}][${ctx}][${level}]: ${message}`;
+    });
+
     const defaultFormat = format.combine(
       format.timestamp(),
       format.errors({ stack: true }),
       format.splat(),
-      format.json(),
+      customFormat
     );
 
     const defaultOptions: LoggerOptions = {
@@ -25,7 +34,10 @@ export class WinstonImplementationModule {
       format: defaultFormat,
       transports: [
         new transports.Console({
-          format: format.combine(format.colorize(), format.simple()),
+          format: format.combine(
+            format.colorize({ all: true }),
+            defaultFormat
+          ),
         }),
       ],
     };

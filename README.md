@@ -143,6 +143,19 @@ Para bibliotecas de backend, normalmente fica mais leve e simples usar:
 
 Se vocês já curtem Storybook e querem uma “central de docs” com MDX mesmo para backend, funciona — só tende a ser mais pesado do que precisa.
 
+## Arquitetura e Roadmap de Melhorias
+
+### Abstração de Cache (Redis vs. In-Memory)
+
+Atualmente, os pacotes `http-client` e `keycloak` gerenciam cache interno de forma isolada (usando `Map` ou variáveis simples). Para suportar ambientes distribuídos (como múltiplos pods em Kubernetes), planejamos a seguinte evolução:
+
+1.  **Interface Comum:** Criar uma interface `ICacheProvider` no pacote `#shared` para padronizar operações de `get`, `set` e `delete`.
+2.  **Inversão de Dependência:** Permitir que os pacotes `http-client` e `keycloak` recebam um provedor de cache opcional em sua configuração.
+3.  **Fallback Seguro:** Se nenhum provedor for injetado, o pacote continuará usando sua implementação local (In-Memory) por padrão.
+4.  **Provedor Redis:** Permitir que o desenvolvedor implemente ou injete um provedor baseado em Redis (ex: via `ioredis`) sem que o pacote base precise depender diretamente da biblioteca do Redis.
+
+**Objetivo:** Manter os pacotes leves e desacoplados, mas prontos para escala horizontal.
+
 ## Publicação
 
 Veja `PUBLISHING.md` para o fluxo de publish (local dry-run e CI).

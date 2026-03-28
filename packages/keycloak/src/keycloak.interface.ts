@@ -35,6 +35,11 @@ export interface KeycloakConfig {
    * Defaults to ['openid', 'profile', 'email'] when omitted.
    */
   scopes?: string | string[];
+  /**
+   * Optional token cache TTL in milliseconds. If provided, KeycloakClient will use this value to
+   * determine how long to cache the access token instead of deriving TTL from the token's expires_in.
+   */
+  tokenCacheTtl?: number;
 }
 
 /**

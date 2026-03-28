@@ -23,7 +23,7 @@ export class KeycloakHttpInterceptor implements NestInterceptor {
       .getRequest();
 
     // Only add token for external API calls (not Keycloak itself)
-    if (request.url && !request.url.includes("keycloak")) {
+    if (typeof request.url === "string" && !request.url.includes("keycloak")) {
       // Note: In a real implementation, you might want to add the token here
       // But since we're using HttpProvider, the token addition should be handled there
       // This interceptor could be used for other HTTP client libraries

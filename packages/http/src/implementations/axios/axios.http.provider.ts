@@ -46,32 +46,38 @@ import {
 
 /** constants, interfaces and types are moved to dedicated files */
 
+import { Inject, Injectable, Optional } from "@nestjs/common";
+import { CACHE_PROVIDER, CacheProviderInterface } from "@adatechnology/cache";
+import { LOGGER_PROVIDER, LoggerProviderInterface } from "@adatechnology/logger";
+
 /**
  * Axios-based implementation of the HTTP provider interface.
  * Provides HTTP client functionality with both Promise and Observable APIs,
- * plus basic caching capabilities.
+ * plus externalized caching capabilities.
  */
+@Injectable()
 export class AxiosHttpProvider implements AxiosHttpProviderInterface {
   private axiosInstance: AxiosInstance;
   private errorInterceptors: Map<number, ErrorInterceptor> = new Map();
   private nextErrorInterceptorId = 0;
   private requestInterceptorIds: Set<number> = new Set();
   private responseInterceptorIds: Set<number> = new Set();
-  private cache = new Map<string, CacheEntry<unknown>>();
-  private cacheCleanupInterval?: ReturnType<typeof setInterval>;
-  private readonly logger?: HttpExternalLogger;
   private readonly loggingConfig?: HttpLoggingConfig;
+  private readonly defaultCacheTtl: number;
+  private readonly cacheKeyPrefix: string;
 
   constructor(
-    axiosInstance?: AxiosInstance,
-    options?: AxiosHttpProviderOptions,
+    @Optional() axiosInstance?: AxiosInstance,
+    @Optional() options?: AxiosHttpProviderOptions,
+    @Optional() @Inject(CACHE_PROVIDER) private readonly cacheProvider?: CacheProviderInterface,
+    @Optional() @Inject(LOGGER_PROVIDER) private readonly logger?: LoggerProviderInterface,
   ) {
     this.axiosInstance = axiosInstance || axios.create();
-    this.logger = options?.logger;
     this.loggingConfig = options?.logging;
+    this.defaultCacheTtl = options?.cache?.defaultTtl ?? DEFAULTS.CACHE_TTL;
+    this.cacheKeyPrefix = options?.cache?.keyPrefix ?? "";
 
     this.setupHttpLoggingInterceptors();
-    this.startCacheCleanup();
   }
 
   private setupHttpLoggingInterceptors(): void {
@@ -201,29 +207,25 @@ export class AxiosHttpProvider implements AxiosHttpProviderInterface {
 
   private emitLog(type: HttpLogType, meta?: Record<string, unknown>): void {
     const context = this.loggingConfig?.context || HTTP_CLIENT_LABEL;
-    const message = this.buildLogMessage(
-      type,
-      meta?.source as string | undefined,
-      meta?.requestId as string | undefined,
-    );
+    const message = `[${type.toUpperCase()}] Request Processing`;
     const normalizedMeta = this.normalizeMetaForLogging(meta);
 
     if (this.logger) {
       if (type === LOG_TYPES.ERROR) {
-        this.logger.error?.({ message, context, meta: normalizedMeta });
+        this.logger.error(message, normalizedMeta, context);
         return;
       }
 
-      this.logger.info?.({ message, context, meta: normalizedMeta });
+      this.logger.info(message, normalizedMeta, context);
       return;
     }
 
     if (type === LOG_TYPES.ERROR) {
-      console.error(message, { context, ...normalizedMeta });
+      console.error(`[${context}] ${message}`, normalizedMeta);
       return;
     }
 
-    console.log(message, { context, ...normalizedMeta });
+    console.log(`[${context}] ${message}`, normalizedMeta);
   }
 
   private buildLogMessage(
@@ -231,28 +233,7 @@ export class AxiosHttpProvider implements AxiosHttpProviderInterface {
     source?: string,
     requestId?: string,
   ): string {
-    const typeLabel = String(type).toLowerCase();
-    const requestIdLabel = requestId || HEADERS_PARAMS.NO_REQUEST_ID_LABEL;
-    const prefix =
-      source && typeof source === "string"
-        ? `[${requestIdLabel}][${typeLabel}][${source}]`
-        : `[${requestIdLabel}][${typeLabel}]`;
-
-    const baseMessage = `${prefix} - ${HTTP_CLIENT_LABEL}`;
-
-    if (type === LOG_TYPES.ERROR) {
-      return `${ANSI_COLORS.ERROR}${baseMessage}${ANSI_COLORS.RESET}`;
-    }
-
-    if (type === LOG_TYPES.RESPONSE) {
-      return `${ANSI_COLORS.WARN}${baseMessage}${ANSI_COLORS.RESET}`;
-    }
-
-    if (type === LOG_TYPES.REQUEST) {
-      return `${ANSI_COLORS.INFO}${baseMessage}${ANSI_COLORS.RESET}`;
-    }
-
-    return baseMessage;
+    return `[${type.toUpperCase()}] ${source ? `${source} - ` : ''}${HTTP_CLIENT_LABEL}`;
   }
 
   private normalizeMetaForLogging(
@@ -300,23 +281,13 @@ export class AxiosHttpProvider implements AxiosHttpProviderInterface {
     }
   }
 
-  private resolveRequestUrl(config?: {
-    baseURL?: string;
-    url?: string;
-  }): string {
-    if (!config?.url) {
-      return "";
-    }
-
-    if (!config.baseURL) {
-      return config.url;
-    }
-
-    if (/^https?:\/\//i.test(config.url)) {
-      return config.url;
-    }
-
-    return `${config.baseURL}${config.url}`;
+  private resolveRequestUrl(config?: any): string {
+    if (!config || !config.url) return "";
+    const url = String(config.url);
+    const base = config.baseURL ? String(config.baseURL) : undefined;
+    if (!base) return url;
+    if (/^https?:\/\//i.test(url)) return url;
+    return `${base}${url}`;
   }
 
   private sanitizeHeaders(
@@ -470,99 +441,60 @@ export class AxiosHttpProvider implements AxiosHttpProviderInterface {
   }
 
   /**
-   * Starts automatic cache cleanup
-   */
-  private startCacheCleanup(): void {
-    // Clean expired cache entries every default cache interval
-    this.cacheCleanupInterval = setInterval(() => {
-      this.cleanupExpiredCache();
-    }, DEFAULTS.CACHE_TTL);
-  }
-
-  /**
-   * Stops automatic cache cleanup
-   */
-  private stopCacheCleanup(): void {
-    if (this.cacheCleanupInterval) {
-      clearInterval(this.cacheCleanupInterval);
-      this.cacheCleanupInterval = undefined;
-    }
-  }
-
-  /**
-   * Cleans up expired cache entries
-   */
-  private cleanupExpiredCache(): void {
-    const now = Date.now();
-    const keysToDelete: string[] = [];
-
-    for (const [key, entry] of this.cache.entries()) {
-      if (now - entry.timestamp > entry.ttl) {
-        keysToDelete.push(key);
-      }
-    }
-
-    keysToDelete.forEach((key) => this.cache.delete(key));
-  }
-
-  /**
    * Generates a cache key from URL and config
    */
   private generateCacheKey({ url, config }: GenerateCacheKeyParams): string {
+    // If caller provided an explicit cacheKey in the request config, use it
+    if (
+      config &&
+      Object.prototype.hasOwnProperty.call(config as any, "cacheKey")
+    ) {
+      return `${this.cacheKeyPrefix}${(config as any).cacheKey}`;
+    }
+
     const params = config?.params ? JSON.stringify(config.params) : "";
-    return `${url}${params}`;
+    return `${this.cacheKeyPrefix}${url}${params}`;
   }
 
   /**
    * Gets cached data if valid
    */
-  private getCached<T>(key: string): T | null {
-    const entry = this.cache.get(key);
-    if (!entry) return null;
-
-    const now = Date.now();
-    if (now - entry.timestamp > entry.ttl) {
-      this.cache.delete(key);
-      return null;
-    }
-
-    return entry.data as unknown as T;
+  private async getCached<T>(key: string): Promise<T | null> {
+    if (!this.cacheProvider) return null;
+    return this.cacheProvider.get<T>(key);
   }
 
   /**
    * Sets data in cache
    */
-  private setCache<T>({
+  private async setCache<T>({
     key,
     data,
-    ttl = DEFAULTS.CACHE_TTL,
-  }: SetCacheParams<T>): void {
-    // default ttl
-    this.cache.set(key, {
-      data,
-      timestamp: Date.now(),
-      ttl,
-    });
+    ttl = this.defaultCacheTtl,
+  }: SetCacheParams<T>): Promise<void> {
+    if (!this.cacheProvider) return;
+    await this.cacheProvider.set(key, data, ttl / 1000); // converting ms to seconds for consistency
   }
 
   /**
    * Clears cache for a specific key or all cache
    */
-  clearCache(key?: string): void {
+  async clearCache(key?: string): Promise<void> {
+    if (!this.cacheProvider) return;
     if (key) {
-      this.cache.delete(key);
+      await this.cacheProvider.del(key);
     } else {
-      this.cache.clear();
+      await this.cacheProvider.clear();
     }
   }
 
   /**
-   * Gets cache statistics
+   * Gets cache statistics (Not supported for external providers)
    */
   getCacheStats(): { size: number; keys: string[] } {
     return {
-      size: this.cache.size,
-      keys: Array.from(this.cache.keys()),
+      size: 0,
+      keys: [],
     };
   }
 
@@ -678,7 +610,7 @@ export class AxiosHttpProvider implements AxiosHttpProviderInterface {
    */
   async get<T>({ url, config }: UrlConfig): Promise<HttpResponse<T>> {
     const cacheKey = this.generateCacheKey({ url, config });
-    const cached = this.getCached<T>(cacheKey);
+    const cached = await this.getCached<T>(cacheKey);
     if (cached) {
       return {
         data: cached,

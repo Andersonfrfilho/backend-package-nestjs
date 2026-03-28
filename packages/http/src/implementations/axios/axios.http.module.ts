@@ -52,6 +52,7 @@ export class HttpImplementationAxiosModule {
           new AxiosHttpProvider(conn, {
             logger,
             logging: opts?.logging,
+            cache: opts?.cache as any,
           }),
         inject: [
           HTTP_AXIOS_CONNECTION,

@@ -9,6 +9,7 @@ import { Reflector } from "@nestjs/core";
 import { ROLES_META_KEY, RolesOptions } from "./roles.decorator";
 import { KEYCLOAK_CONFIG } from "./keycloak.token";
 import type { KeycloakConfig } from "./keycloak.interface";
+import type { KeycloakJwtPayload } from "./keycloak.interface";
 import { BaseAppError } from "@adatechnology/shared";
 
 @Injectable()

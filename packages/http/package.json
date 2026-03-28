@@ -14,7 +14,8 @@
     "check": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@adatechnology/logger": "workspace:*"
+    "@adatechnology/logger": "workspace:*",
+    "@adatechnology/cache": "workspace:*"
   },
   "peerDependencies": {
     "@nestjs/common": "^11.0.16",
