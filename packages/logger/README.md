@@ -87,6 +87,42 @@ Observação: o obfuscator padrão é aplicado recursivamente em objetos e aceit
 
 Se quiser, eu adiciono um exemplo de teste unitário para validar o comportamento do obfuscator.
 
+## Padrão de Logging (Desenvolvimento)
+
+Este pacote implementa um formato de log padronizado para todo o monorepo, facilitando o rastreamento de chamadas entre múltiplas bibliotecas e serviços.
+
+### Formato Final
+`[App-name@version][lib-name:version][requestId][timestamp][source][libMethod][LEVEL] - message - {payload}`
+
+### Propriedades do Payload
+Ao realizar um log, você pode passar as seguintes propriedades para enriquecer o contexto:
+
+- `message`: A mensagem principal do log.
+- `context`: O contexto geral (ex: nome da classe da biblioteca).
+- `source`: O chamador original (breadcrumb). Ex: `HttpClientController.listPokemon`.
+- `lib`: Nome da biblioteca que está gerando o log. Ex: `@adatechnology/http-client`.
+- `libVersion`: Versão da biblioteca.
+- `libMethod`: O método interno da biblioteca sendo executado. Ex: `get`.
+- `meta`: Objeto com metadados adicionais (será exibido em uma única linha compacta).
+
+### Exemplo de Log de Biblioteca
+Para uma biblioteca que segue o padrão:
+
+```ts
+this.logger.info({
+  message: 'HTTP Request GET https://pokeapi.co/api/v2/pokemon',
+  context: 'HttpRedisClient',
+  lib: '@adatechnology/http-client',
+  libVersion: '0.0.2',
+  libMethod: 'get',
+  source: 'HttpClientController.listPokemon', // vindo do logContext da chamada
+  meta: { ... }
+});
+```
+
+Resultado visual:
+`[App-example@0.0.3][@adatechnology/http-client:0.0.2][req-id][2026-03-29...][HttpClientController.listPokemon][HttpRedisClient.get][INFO] - HTTP Request... - { headers: ... }`
+
 ## Middleware e contexto automático
 
 O pacote oferece um middleware `RequestContextMiddleware` que injeta um `requestId` (a partir do header `x-request-id` ou gerando um UUID) e executa a request dentro de um contexto assíncrono (AsyncLocalStorage). Para usá-lo no NestJS:
