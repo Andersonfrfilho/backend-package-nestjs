@@ -78,7 +78,6 @@ export class AxiosHttpProvider implements AxiosHttpProviderInterface {
     this.cacheKeyPrefix = options?.cache?.keyPrefix ?? "";
 
     this.setupHttpLoggingInterceptors();
-    this.logger?.setContext?.("AxiosHttpProvider");
   }
 
   private setupHttpLoggingInterceptors(): void {
@@ -93,8 +92,10 @@ export class AxiosHttpProvider implements AxiosHttpProviderInterface {
 
         if (this.shouldLogType(LOG_TYPES.REQUEST)) {
           const logContext = this.extractLogContext(config);
+          const method = (config.method || HttpMethod.GET).toLowerCase();
+          
           this.emitLog(LOG_TYPES.REQUEST, {
-            method: (config.method || HttpMethod.GET).toUpperCase(),
+            method: method.toUpperCase(),
             url: this.resolveRequestUrl(config),
             source: this.buildSource(logContext),
             requestId: logContext.requestId,
@@ -102,7 +103,7 @@ export class AxiosHttpProvider implements AxiosHttpProviderInterface {
               ? this.sanitizeHeaders(config.headers as Record<string, unknown>)
               : undefined,
             data: this.loggingConfig?.includeBody ? config.data : undefined,
-          });
+          }, method);
         }
 
         return config;
@@ -113,7 +114,7 @@ export class AxiosHttpProvider implements AxiosHttpProviderInterface {
             phase: "request",
             message: String(error.message),
             url: this.resolveRequestUrl(error.config),
-          });
+          }, "request");
         }
 
         return Promise.reject(error);
@@ -128,11 +129,10 @@ export class AxiosHttpProvider implements AxiosHttpProviderInterface {
             response.config as unknown as Record<string, unknown>
           ).__httpStartedAt as number | undefined;
           const durationMs = startedAt ? Date.now() - startedAt : undefined;
+          const method = String((response.config as any)?.method || HttpMethod.GET).toLowerCase();
 
           this.emitLog(LOG_TYPES.RESPONSE, {
-            method: String(
-              (response.config as any)?.method || HttpMethod.GET,
-            ).toUpperCase(),
+            method: method.toUpperCase(),
             url: this.resolveRequestUrl(response.config),
             source: this.buildSource(logContext),
             requestId: logContext.requestId,
@@ -144,7 +144,7 @@ export class AxiosHttpProvider implements AxiosHttpProviderInterface {
                 )
               : undefined,
             data: this.loggingConfig?.includeBody ? response.data : undefined,
-          });
+          }, method);
         }
 
         return response;
@@ -156,12 +156,11 @@ export class AxiosHttpProvider implements AxiosHttpProviderInterface {
           const startedAt = (cfg as Record<string, unknown>)
             ?.__httpStartedAt as number | undefined;
           const durationMs = startedAt ? Date.now() - startedAt : undefined;
+          const method = String((cfg as any)?.method || HttpMethod.GET).toLowerCase();
 
           this.emitLog(LOG_TYPES.ERROR, {
             phase: "response",
-            method: String(
-              (cfg as any)?.method || HttpMethod.GET,
-            ).toUpperCase(),
+            method: method.toUpperCase(),
             url: this.resolveRequestUrl(cfg),
             source: this.buildSource(logContext),
             requestId: logContext.requestId,
@@ -171,7 +170,7 @@ export class AxiosHttpProvider implements AxiosHttpProviderInterface {
             responseData: this.loggingConfig?.includeBody
               ? error.response?.data
               : undefined,
-          });
+          }, method);
         }
 
         return Promise.reject(error);
@@ -206,27 +205,50 @@ export class AxiosHttpProvider implements AxiosHttpProviderInterface {
     return types.includes(type);
   }
 
-  private emitLog(type: HttpLogType, meta?: Record<string, unknown>): void {
+  private emitLog(type: HttpLogType, meta?: Record<string, unknown>, libMethod?: string): void {
     const context = this.loggingConfig?.context || "HttpClient";
-    const message = "Request Processing";
+    const method = meta?.method ? `[${meta.method}]` : "";
+    const url = meta?.url ? `${meta.url}` : "";
+    const status = meta?.status ? `[${meta.status}]` : "";
+    const duration = meta?.durationMs ? ` (${meta.durationMs}ms)` : "";
+
+    let message = "HTTP request";
+    if (type === LOG_TYPES.REQUEST) {
+      message = `HTTP Request ${method} ${url}`;
+    } else if (type === LOG_TYPES.RESPONSE) {
+      message = `HTTP Response ${status} ${method} ${url}${duration}`;
+    } else if (type === LOG_TYPES.ERROR) {
+      message = `HTTP Error ${status} ${method} ${url}${duration}`;
+    }
+
     const normalizedMeta = this.normalizeMetaForLogging(meta);
 
     if (this.logger) {
+      const payload = {
+        message,
+        context,
+        meta: normalizedMeta,
+        source: meta?.source,
+        lib: "@adatechnology/http-client",
+        libVersion: "0.0.2",
+        libMethod,
+      } as any;
+
       if (type === LOG_TYPES.ERROR) {
-        this.logger.error(message, normalizedMeta, context);
+        this.logger.error(payload);
         return;
       }
 
-      this.logger.info(message, normalizedMeta, context);
+      this.logger.info(payload);
       return;
     }
 
     if (type === LOG_TYPES.ERROR) {
-      if (!this.logger) console.error(`[${context}] ${message}`, normalizedMeta);
+      console.error(`[${context}] ${message}`, normalizedMeta);
       return;
     }
 
-    if (!this.logger) console.log(`[${context}] ${message}`, normalizedMeta);
+    console.log(`[${context}] ${message}`, normalizedMeta);
   }
 
   private buildLogMessage(
@@ -863,7 +885,7 @@ export class AxiosHttpProvider implements AxiosHttpProviderInterface {
     try {
       const masked = AxiosHttpProvider.maskToken(token);
 
-      this.logger?.debug?.(`setAuthToken ${type} ${masked}`);
+      this.logger?.debug?.({ message: `setAuthToken ${type} ${masked}` });
     } catch (err) {
       // swallow logging errors
     }
@@ -888,7 +910,7 @@ export class AxiosHttpProvider implements AxiosHttpProviderInterface {
       try {
         processedError = await interceptor(processedError);
       } catch (interceptorError) {
-        this.logger?.warn?.("Error interceptor failed", interceptorError);
+        this.logger?.warn?.({ message: "Error interceptor failed", meta: { error: interceptorError } });
       }
     }
 

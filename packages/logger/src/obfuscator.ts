@@ -51,6 +51,12 @@ export function defaultObfuscator(params: DefaultObfuscatorParams): unknown {
   const { keys: extraKeys, custom } = normalizeEntries(entries);
   const keys = DEFAULT_SENSITIVE_KEYS.concat(extraKeys || []);
 
+  function splitIntoWords(k: string) {
+    // insert space between camelCase boundaries, replace separators with space
+    const withSpaces = k.replace(/([a-z0-9])([A-Z])/g, "$1 $2").replace(/[_\-.]+/g, ' ');
+    return withSpaces.split(/\s+/).filter(Boolean);
+  }
+
   const out: Record<string, unknown> = {};
   for (const key of Object.keys(obj as Record<string, unknown>)) {
     const value = (obj as Record<string, unknown>)[key];
@@ -61,7 +67,16 @@ export function defaultObfuscator(params: DefaultObfuscatorParams): unknown {
       } catch (error) {
         out[key] = MASK.REPLACEMENT;
       }
-    } else if (keys.some((s) => lowerKey.includes(s.toLowerCase()))) {
+    } else if (
+      // match when key exactly equals a sensitive token OR
+      // when any token equals one of the camelCase/sep-separated words
+      keys.some((s) => {
+        const sens = s.toLowerCase();
+        if (lowerKey === sens) return true;
+        const words = splitIntoWords(lowerKey);
+        return words.some((w) => w === sens);
+      })
+    ) {
       // mask value using default strategy
       if (typeof value === "string") out[key] = maskString(value);
       else out[key] = MASK.REPLACEMENT;

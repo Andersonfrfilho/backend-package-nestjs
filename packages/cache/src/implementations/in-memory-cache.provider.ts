@@ -11,36 +11,36 @@ export class InMemoryCacheProvider implements CacheProviderInterface {
   ) {}
 
   async get<T>(key: string): Promise<T | null> {
-    this.logger?.debug?.(`get - Key: ${key}`);
+    this.logger?.debug?.({ message: `get - Key: ${key}` });
     const entry = this.cache.get(key);
     if (!entry) {
-      this.logger?.debug?.(`[InMemoryCacheProvider] get - Miss: ${key}`);
+      this.logger?.debug?.({ message: `[InMemoryCacheProvider] get - Miss: ${key}` });
       return null;
     }
 
     if (entry.expiry && Date.now() > entry.expiry) {
-      this.logger?.debug?.(`[InMemoryCacheProvider] get - Expired: ${key}`);
+      this.logger?.debug?.({ message: `[InMemoryCacheProvider] get - Expired: ${key}` });
       this.cache.delete(key);
       return null;
     }
 
-    this.logger?.debug?.(`[InMemoryCacheProvider] get - Hit: ${key}`);
+    this.logger?.debug?.({ message: `[InMemoryCacheProvider] get - Hit: ${key}` });
     return entry.value as T;
   }
 
   async set<T>(key: string, value: T, ttlInSeconds?: number): Promise<void> {
-    this.logger?.debug?.(`[InMemoryCacheProvider] set - Key: ${key}, TTL: ${ttlInSeconds ?? 'No TTL'}`);
+    this.logger?.debug?.({ message: `[InMemoryCacheProvider] set - Key: ${key}, TTL: ${ttlInSeconds ?? 'No TTL'}` });
     const expiry = ttlInSeconds ? Date.now() + ttlInSeconds * 1000 : null;
     this.cache.set(key, { value, expiry });
   }
 
   async del(key: string): Promise<void> {
-    this.logger?.debug?.(`[InMemoryCacheProvider] del - Key: ${key}`);
+    this.logger?.debug?.({ message: `[InMemoryCacheProvider] del - Key: ${key}` });
     this.cache.delete(key);
   }
 
   async clear(): Promise<void> {
-    this.logger?.info?.('[InMemoryCacheProvider] clear - Flushing all cache');
+    this.logger?.info?.({ message: '[InMemoryCacheProvider] clear - Flushing all cache' });
     this.cache.clear();
   }
 }

@@ -19,6 +19,8 @@ import { LoggerModule, RequestContextMiddleware } from '@adatechnology/logger';
     LoggerModule.forRoot({
       level: 'debug',
       context: 'ExampleApp',
+      appName: 'example',
+      appVersion: '0.0.3',
       isProduction: process.env.NODE_ENV === 'production',
       colorize: true,
     }),

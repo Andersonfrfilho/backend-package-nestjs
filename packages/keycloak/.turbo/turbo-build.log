@@ -1,4 +1,1 @@
 
-> @adatechnology/auth-keycloak@0.0.2 build /Users/anderson.filho/Documents/personal/backend-package-nestjs/packages/keycloak
-> rm -rf dist && tsc -p tsconfig.build.json
-

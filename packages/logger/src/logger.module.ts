@@ -1,9 +1,10 @@
-import { DynamicModule, Module, Scope, Provider } from "@nestjs/common";
+import { DynamicModule, Module, Scope, Provider, Global } from "@nestjs/common";
 import { LoggerProvider } from "./logger.provider";
 import { LOGGER_PROVIDER } from "./logger.token";
 import { WinstonImplementationModule } from "./implementations/winston/winston.logger.module";
 import type { LoggerConfig } from "./logger.config";
 
+@Global()
 @Module({})
 export class LoggerModule {
   static forRoot(config?: LoggerConfig): DynamicModule {

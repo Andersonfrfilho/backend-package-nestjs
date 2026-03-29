@@ -1,6 +1,6 @@
 import { Inject, Injectable, Optional } from "@nestjs/common";
 import type { ExampleOptions, ExampleServiceInterface } from "./types";
-import { EXAMPLE_OPTIONS_TOKEN } from "./shared.module";
+import { EXAMPLE_OPTIONS_TOKEN } from "./tokens";
 
 @Injectable()
 export class ExampleService implements ExampleServiceInterface {

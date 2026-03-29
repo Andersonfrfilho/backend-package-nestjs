@@ -43,3 +43,14 @@ build/
 # PNPM
 pnpm-lock.yaml
 pnpm-workspace.yaml.bak
+.gemini/
+.github/
+.claude/
+.agent/
+.agents/
+agents/
+**/agents/
+.cursor/
+.history/
+.windsurf/
+.skill-lock.json

@@ -1,11 +1,5 @@
-export {
-	ExampleModule,
-	EXAMPLE_OPTIONS_TOKEN,
-	EXAMPLE_SERVICE_PROVIDE,
-	EXAMPLE_LIB,
-	createExampleOptionsToken,
-	createExampleServiceToken,
-} from "./shared.module";
+export { ExampleModule } from "./shared.module";
+export * from "./tokens";
 
 export { ExampleService } from "./shared.service";
 

@@ -15,11 +15,12 @@ import {
 import { Observable } from 'rxjs';
 import { Inject } from '@nestjs/common';
 import {
-  HTTP_PROVIDER,
-  HttpMethod,
-  UseHttpRequestId,
-} from '@adatechnology/http-client';
+  LOGGER_PROVIDER,
+  LoggerProviderInterface,
+} from '@adatechnology/logger';
+import { HttpMethod, UseHttpRequestId } from '@adatechnology/http-client';
 import type { HttpProviderInterface } from '@adatechnology/http-client';
+import { HTTP_REDIS, HTTP_LOCAL } from '../constants';
 
 let lastRequestInterceptorId: number | null = null;
 let lastResponseInterceptorId: number | null = null;
@@ -29,15 +30,16 @@ let lastErrorInterceptorId: number | null = null;
 @UseHttpRequestId()
 export class HttpClientController {
   constructor(
-    @Inject('HTTP_REDIS') private readonly httpRedis: HttpProviderInterface,
-    @Inject('HTTP_LOCAL') private readonly httpLocal: HttpProviderInterface,
+    @Inject(HTTP_REDIS) private readonly httpRedis: HttpProviderInterface,
+    @Inject(HTTP_LOCAL) private readonly httpLocal: HttpProviderInterface,
+    @Inject(LOGGER_PROVIDER) private readonly logger?: LoggerProviderInterface,
   ) {}
 
   @Get('multi-cache-demo')
   async multiCacheDemo() {
     // Chamada 1: Usando Redis (ex.: PokeAPI)
     const redisRes = await this.httpRedis.get({ url: '/pokemon/1' });
-    
+
     // Chamada 2: Usando Local (ex.: JSONPlaceholder)
     const localRes = await this.httpLocal.get({ url: '/users/1' });
 
@@ -51,15 +53,41 @@ export class HttpClientController {
 
   @Get('pokemon')
   async listPokemon() {
+    const url = '/pokemon?limit=20';
+    const logContext = {
+      className: HttpClientController.name,
+      methodName: this.listPokemon.name,
+    };
+
+    // log start
+    const startTime = Date.now();
+    this.logger?.info({
+      message: 'HTTP CALL START',
+      meta: { method: 'GET', url, logContext },
+      context: 'HttpClientController',
+    });
+
     const res = await this.httpRedis.get({
-      url: '/pokemon?limit=20',
+      url,
       config: {
-        logContext: {
-          className: HttpClientController.name,
-          methodName: this.listPokemon.name,
-        },
+        logContext,
       },
     });
+
+    // log end
+    const durationMs = Date.now() - startTime;
+    this.logger?.info({
+      message: 'HTTP CALL END',
+      meta: {
+        method: 'GET',
+        url,
+        status: res?.status,
+        durationMs,
+        logContext,
+      },
+      context: 'HttpClientController',
+    });
+
     return res.data;
   }
 
@@ -106,25 +134,33 @@ export class HttpClientController {
   // PokeAPI is read-only; keep create/modify/delete endpoints as examples
   @Post('post')
   async create(@Body() body: any) {
-    const res = await this.httpRedis.post({ url: '/pokemon', data: body }).catch((e) => e);
+    const res = await this.httpRedis
+      .post({ url: '/pokemon', data: body })
+      .catch((e) => e);
     return { status: res?.status ?? 500, data: res?.data };
   }
 
   @Put('put/:id')
   async replace(@Param('id') id: string, @Body() body: any) {
-    const res = await this.httpRedis.put({ url: `/pokemon/${id}`, data: body }).catch((e) => e);
+    const res = await this.httpRedis
+      .put({ url: `/pokemon/${id}`, data: body })
+      .catch((e) => e);
     return { status: res?.status ?? 500, data: res?.data };
   }
 
   @Patch('patch/:id')
   async modify(@Param('id') id: string, @Body() body: any) {
-    const res = await this.httpRedis.patch({ url: `/pokemon/${id}`, data: body }).catch((e) => e);
+    const res = await this.httpRedis
+      .patch({ url: `/pokemon/${id}`, data: body })
+      .catch((e) => e);
     return { status: res?.status ?? 500, data: res?.data };
   }
 
   @Delete('delete/:id')
   async remove(@Param('id') id: string) {
-    const res = await this.httpRedis.delete({ url: `/pokemon/${id}` }).catch((e) => e);
+    const res = await this.httpRedis
+      .delete({ url: `/pokemon/${id}` })
+      .catch((e) => e);
     return { status: res?.status ?? 500 };
   }
 
@@ -244,17 +280,21 @@ export class HttpClientController {
 
   @Post('add-interceptors')
   addInterceptors() {
-    lastRequestInterceptorId = this.httpRedis.addRequestInterceptor((cfg: any) => {
-      cfg.headers = cfg.headers || {};
-      cfg.headers['X-Example-Request'] = '1';
-      return cfg;
-    });
+    lastRequestInterceptorId = this.httpRedis.addRequestInterceptor(
+      (cfg: any) => {
+        cfg.headers = cfg.headers || {};
+        cfg.headers['X-Example-Request'] = '1';
+        return cfg;
+      },
+    );
 
-    lastResponseInterceptorId = this.httpRedis.addResponseInterceptor((res: any) => {
-      res.config = res.config || {};
-      (res.config as any).__receivedAt = Date.now();
-      return res;
-    });
+    lastResponseInterceptorId = this.httpRedis.addResponseInterceptor(
+      (res: any) => {
+        res.config = res.config || {};
+        res.config.__receivedAt = Date.now();
+        return res;
+      },
+    );
 
     return {
       requestId: lastRequestInterceptorId,
@@ -275,12 +315,14 @@ export class HttpClientController {
 
   @Post('add-error-interceptor')
   addErrorInterceptor() {
-    lastErrorInterceptorId = this.httpRedis.addErrorInterceptor((error: any) => {
-      if (error && typeof error === 'object') {
-        (error as any).__handledByExample = true;
-      }
-      return error;
-    });
+    lastErrorInterceptorId = this.httpRedis.addErrorInterceptor(
+      (error: any) => {
+        if (error && typeof error === 'object') {
+          error.__handledByExample = true;
+        }
+        return error;
+      },
+    );
 
     return { errorInterceptorId: lastErrorInterceptorId };
   }

@@ -54,15 +54,23 @@ export class HttpRequestIdInterceptor implements NestInterceptor {
   }
 
   private resolveOptions(context: ExecutionContext): HttpRequestIdOptions {
-    const classOptions = this.reflector.get<HttpRequestIdOptions>(
-      HTTP_REQUEST_ID_METADATA,
-      context.getClass(),
-    );
+    // Reflector may not be injected in some edge cases (created without DI).
+    // Fallback to Reflect.getMetadata when Reflector is unavailable.
+    const classOptions =
+      (this.reflector &&
+        this.reflector.get<HttpRequestIdOptions>(
+          HTTP_REQUEST_ID_METADATA,
+          context.getClass(),
+        )) ||
+      Reflect.getMetadata(HTTP_REQUEST_ID_METADATA, context.getClass());
 
-    const methodOptions = this.reflector.get<HttpRequestIdOptions>(
-      HTTP_REQUEST_ID_METADATA,
-      context.getHandler(),
-    );
+    const methodOptions =
+      (this.reflector &&
+        this.reflector.get<HttpRequestIdOptions>(
+          HTTP_REQUEST_ID_METADATA,
+          context.getHandler(),
+        )) ||
+      Reflect.getMetadata(HTTP_REQUEST_ID_METADATA, context.getHandler());
 
     return {
       headerName: HEADERS_PARAMS.REQUEST_ID,

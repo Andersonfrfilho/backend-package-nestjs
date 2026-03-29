@@ -2,7 +2,11 @@ import { DynamicModule, Global, Module, Provider } from "@nestjs/common";
 import axios from "axios";
 import { AxiosHttpProvider } from "./implementations/axios/axios.http.provider";
 import { HTTP_PROVIDER } from "./http.token";
-import { CACHE_PROVIDER, InMemoryCacheProvider, RedisCacheProvider } from "@adatechnology/cache";
+import {
+  CACHE_PROVIDER,
+  InMemoryCacheProvider,
+  RedisCacheProvider,
+} from "@adatechnology/cache";
 import { HttpModuleOptions } from "./http.interface";
 
 @Global()
@@ -26,7 +30,7 @@ export class HttpModule {
 
     providers.push({
       provide: httpToken,
-      useFactory: (cache?: any) => {
+      useFactory: (cache?: any, logger?: any) => {
         const isAxiosConfig =
           configOrOptions.baseURL ||
           configOrOptions.timeout ||
@@ -37,9 +41,12 @@ export class HttpModule {
         const axiosInstance = axiosConfig
           ? axios.create(axiosConfig)
           : undefined;
-        return new AxiosHttpProvider(axiosInstance, opts, cache);
+        return new AxiosHttpProvider(axiosInstance, opts, cache, logger);
       },
-      inject: [{ token: cacheToken, optional: true }],
+      inject: [
+        { token: cacheToken, optional: true },
+        { token: "LOGGER_PROVIDER", optional: true },
+      ],
     });
 
     return {
@@ -109,6 +116,7 @@ export class HttpModule {
           useFactory: (
             moduleOptions: { config: any; options: HttpModuleOptions },
             cache?: any,
+            logger?: any,
           ) => {
             const { config, options: httpOptions } = moduleOptions;
             const isAxiosConfig =
@@ -117,11 +125,17 @@ export class HttpModule {
             const axiosInstance = axiosConfig
               ? axios.create(axiosConfig)
               : undefined;
-            return new AxiosHttpProvider(axiosInstance, httpOptions, cache);
+            return new AxiosHttpProvider(
+              axiosInstance,
+              httpOptions,
+              cache,
+              logger,
+            );
           },
           inject: [
             "HTTP_MODULE_OPTIONS",
             { token: cacheToken, optional: true },
+            { token: "LOGGER_PROVIDER", optional: true },
           ],
         },
       ],

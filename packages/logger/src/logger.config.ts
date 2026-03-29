@@ -1,5 +1,5 @@
-import type { WinstonModuleConfig } from './implementations/winston/winston.logger.types';
-import { LoggerLevel } from './logger.interface';
+import type { WinstonModuleConfig } from "./implementations/winston/winston.logger.types";
+import { LoggerLevel } from "./logger.interface";
 
 export interface LoggerConfig extends WinstonModuleConfig {
   /**
@@ -26,6 +26,26 @@ export interface LoggerConfig extends WinstonModuleConfig {
    * Define se deve colorir a saída (útil para desenvolvimento local)
    */
   colorize?: boolean;
+
+  /**
+   * Nome da aplicação para exibição nos logs
+   */
+  appName?: string;
+
+  /**
+   * Versão da aplicação para exibição nos logs
+   */
+  appVersion?: string;
+
+  /**
+   * Identificação da biblioteca/módulo que está gerando o log
+   */
+  lib?: string;
+
+  /**
+   * Versão da biblioteca/módulo que está gerando o log
+   */
+  libVersion?: string;
 }
 
 export const DEFAULT_LOGGER_CONFIG: LoggerConfig = {

@@ -20,79 +20,79 @@ export class WinstonLoggerProvider implements LoggerProviderInterface {
     @Inject(WINSTON_OBFUSCATOR) private readonly obfuscator?: Obfuscator,
   ) {}
 
-  // overloads
   debug(payload: LogPayload): void;
-  debug(
-    message: string,
-    meta?: Record<string, unknown>,
-    context?: string,
-  ): void;
-  debug(...args: unknown[]): void {
-    const payload = this.normalizeArgs(args);
-    this.log({ level: LoggerLevel.DEBUG, payload });
+  debug(message: string, meta?: Record<string, unknown>, context?: string): void;
+  debug(messageOrPayload: string | LogPayload, meta?: Record<string, unknown>, context?: string): void {
+    this.handleLog(LoggerLevel.DEBUG, messageOrPayload, meta, context);
   }
 
   info(payload: LogPayload): void;
   info(message: string, meta?: Record<string, unknown>, context?: string): void;
-  info(...args: unknown[]): void {
-    const payload = this.normalizeArgs(args);
-    this.log({ level: LoggerLevel.INFO, payload });
+  info(messageOrPayload: string | LogPayload, meta?: Record<string, unknown>, context?: string): void {
+    this.handleLog(LoggerLevel.INFO, messageOrPayload, meta, context);
   }
 
   warn(payload: LogPayload): void;
   warn(message: string, meta?: Record<string, unknown>, context?: string): void;
-  warn(...args: unknown[]): void {
-    const payload = this.normalizeArgs(args);
-    this.log({ level: LoggerLevel.WARN, payload });
+  warn(messageOrPayload: string | LogPayload, meta?: Record<string, unknown>, context?: string): void {
+    this.handleLog(LoggerLevel.WARN, messageOrPayload, meta, context);
   }
 
   error(payload: LogPayload): void;
-  error(
-    message: string,
-    meta?: Record<string, unknown>,
-    context?: string,
-  ): void;
-  error(...args: unknown[]): void {
-    const payload = this.normalizeArgs(args);
-    this.log({ level: LoggerLevel.ERROR, payload });
+  error(message: string, meta?: Record<string, unknown>, context?: string): void;
+  error(messageOrPayload: string | LogPayload, meta?: Record<string, unknown>, context?: string): void {
+    this.handleLog(LoggerLevel.ERROR, messageOrPayload, meta, context);
   }
+
   setContext(context: string): void {
     this.context = context;
   }
 
+  private handleLog(
+    level: LoggerLevel,
+    messageOrPayload: string | LogPayload,
+    meta?: Record<string, unknown>,
+    context?: string,
+  ): void {
+    let payload: LogPayload;
+
+    if (typeof messageOrPayload === "string") {
+      payload = {
+        message: messageOrPayload,
+        meta,
+        context: context || this.context,
+      };
+    } else {
+      payload = {
+        ...messageOrPayload,
+        context: messageOrPayload.context || context || this.context,
+        meta: { ...messageOrPayload.meta, ...meta },
+      };
+    }
+
+    this.log({ level, payload });
+  }
+
   private log(params: LogParams) {
     const { level, payload } = params;
-    const messageText = payload?.message ?? EMPTY_STRING;
-    const messageContext = payload?.context ?? this.context;
-    const meta = payload?.meta;
-
+    // Extract standard fields but keep the rest to pass to Winston
+    const { message, context, meta, ...rest } = payload as any;
+    
+    const messageText = message ?? EMPTY_STRING;
+    const messageContext = context ?? this.context;
     const obfuscatedMeta = this.obfuscator ? this.obfuscator(meta) : meta;
 
     const requestContext = getContext();
-    const requestId =
-      (meta as Record<string, unknown>)?.requestId ??
-      (requestContext as Record<string, unknown> | undefined)?.requestId;
-    const metaWithRequest = Object.assign(
-      {},
-      obfuscatedMeta ?? {},
-      requestId ? { requestId } : {},
-    );
-    const logMeta = messageContext
-      ? { context: messageContext, meta: metaWithRequest }
-      : { meta: metaWithRequest };
+    const requestIdFromContext = (requestContext as Record<string, unknown> | undefined)?.requestId;
+    
+    // Merge everything into a flat info object for Winston
+    const logInfo: Record<string, unknown> = {
+      ...rest,
+      context: messageContext,
+      requestId: requestIdFromContext || payload.requestId,
+      meta: obfuscatedMeta,
+    };
 
-    this.logger.log(level as unknown as string, messageText, logMeta);
-  }
-
-  private normalizeArgs(args: unknown[]): LogPayload {
-    if (typeof args[0] === "string") {
-      const message: string = args[0] as string;
-      const meta: Record<string, unknown> | undefined = args[1] as
-        | Record<string, unknown>
-        | undefined;
-      const context: string | undefined = args[2] as string | undefined;
-      return { message, meta, context } as LogPayload;
-    }
-    return args[0] as LogPayload;
+    this.logger.log(level as unknown as string, messageText, logInfo);
   }
 }
