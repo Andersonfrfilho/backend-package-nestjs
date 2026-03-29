@@ -6,8 +6,8 @@
 [34mCLI[39m Cleaning output folder
 [34mCJS[39m Build start
 [33mCJS[39m [33mYou have emitDecoratorMetadata enabled but @swc/core was not installed, skipping swc plugin[39m
-[32mCJS[39m [1mdist/index.js [22m[32m40.28 KB[39m
-[32mCJS[39m ⚡️ Build success in 9ms
+[32mCJS[39m [1mdist/index.js [22m[32m40.36 KB[39m
+[32mCJS[39m ⚡️ Build success in 32ms
 DTS Build start
-DTS ⚡️ Build success in 621ms
-DTS dist/index.d.ts 10.92 KB
+DTS ⚡️ Build success in 999ms
+DTS dist/index.d.ts 11.12 KB

@@ -1,5 +1,5 @@
 import { Inject, Injectable, Optional } from "@nestjs/common";
-import { HTTP_PROVIDER } from "@adatechnology/http-client";
+import { HTTP_PROVIDER, getHttpRequestContext } from "@adatechnology/http-client";
 import type { HttpProviderInterface } from "@adatechnology/http-client";
 import { LOGGER_PROVIDER, LoggerProviderInterface } from "@adatechnology/logger";
 
@@ -39,8 +39,11 @@ function extractErrorInfo(err: unknown) {
 
     return { statusCode, details, keycloakError };
   }
+  
+  // Network errors (e.g., ECONNREFUSED) won't have a response object
   return {
-    details: e && typeof e.message === "string" ? e.message : undefined,
+    details: e?.message ? String(e.message) : undefined,
+    keycloakError: e?.code ? `NETWORK_ERROR_${String(e.code)}` : undefined,
   };
 }
 
@@ -61,12 +64,21 @@ export class KeycloakClient implements KeycloakClientInterface {
   private log(level: "debug" | "info" | "warn" | "error", message: string, libMethod: string, meta?: Record<string, unknown>) {
     if (!this.logger) return;
     
+    // Support correlation by checking HTTP request context for a requestId
+    const httpCtx = getHttpRequestContext();
+    const requestId = httpCtx?.requestId;
+    const source = httpCtx?.className && httpCtx?.methodName 
+      ? `${httpCtx.className}.${httpCtx.methodName}` 
+      : undefined;
+
     const payload = {
       message,
       context: "KeycloakClient",
       lib: LIB_NAME,
       libVersion: LIB_VERSION,
       libMethod,
+      source,
+      requestId,
       meta,
     };
 

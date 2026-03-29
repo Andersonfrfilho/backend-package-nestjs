@@ -106,19 +106,15 @@ export class HttpClientController {
   }
 
   @Get('pokemon/:id/with-request-id')
-  async getOneWithRequestId(
-    @Param('id') id: string,
-    @Headers('x-request-id') requestId?: string,
-  ) {
+  async getOneWithRequestId(@Param('id') id: string) {
     try {
       const res = await this.httpRedis.get({
         url: `/pokemon/${id}`,
         config: {
-          headers: requestId ? { 'x-request-id': requestId } : undefined,
           logContext: {
             className: HttpClientController.name,
-            methodName: this.getOneWithRequestId.name,
-            requestId,
+            methodName: 'getOneWithRequestId',
+            // O requestId será injetado automaticamente pelo @UseHttpRequestId() do Controller
           },
         },
       });
@@ -233,53 +229,89 @@ export class HttpClientController {
 
   @Post('set-base-url')
   async setBaseUrl(@Body() body: { baseURL: string }) {
+    const logContext = { className: HttpClientController.name, methodName: 'setBaseUrl' };
+    this.logger?.info({ message: 'SET BASE URL START', meta: { body, logContext }, context: 'HttpClientController' });
+    
     this.httpRedis.setBaseUrl(body.baseURL);
+    
+    this.logger?.info({ message: 'SET BASE URL END', meta: { baseURL: body.baseURL, logContext }, context: 'HttpClientController' });
     return { baseURL: body.baseURL };
   }
 
   @Get('get-base-url')
   getBaseUrl() {
-    return { baseURL: this.httpRedis.getBaseUrl() };
+    const logContext = { className: HttpClientController.name, methodName: 'getBaseUrl' };
+    const baseURL = this.httpRedis.getBaseUrl();
+    this.logger?.info({ message: 'GET BASE URL', meta: { baseURL, logContext }, context: 'HttpClientController' });
+    return { baseURL };
   }
 
   @Post('set-timeout')
   setTimeout(@Body() body: { timeout: number }) {
+    const logContext = { className: HttpClientController.name, methodName: 'setTimeout' };
+    this.logger?.info({ message: 'SET TIMEOUT START', meta: { body, logContext }, context: 'HttpClientController' });
+    
     this.httpRedis.setDefaultTimeout(body.timeout);
+    
+    this.logger?.info({ message: 'SET TIMEOUT END', meta: { timeout: body.timeout, logContext }, context: 'HttpClientController' });
     return { timeout: body.timeout };
   }
 
   @Post('set-global-header')
   setGlobalHeader(@Body() body: { key: string; value: string }) {
+    const logContext = { className: HttpClientController.name, methodName: 'setGlobalHeader' };
+    this.logger?.info({ message: 'SET GLOBAL HEADER START', meta: { body, logContext }, context: 'HttpClientController' });
+    
     this.httpRedis.setGlobalHeader({ key: body.key, value: body.value });
+    
+    this.logger?.info({ message: 'SET GLOBAL HEADER END', meta: { key: body.key, logContext }, context: 'HttpClientController' });
     return { key: body.key, value: body.value };
   }
 
   @Post('remove-global-header')
   removeGlobalHeader(@Body() body: { key: string }) {
+    const logContext = { className: HttpClientController.name, methodName: 'removeGlobalHeader' };
+    this.logger?.info({ message: 'REMOVE GLOBAL HEADER START', meta: { body, logContext }, context: 'HttpClientController' });
+    
     this.httpRedis.removeGlobalHeader(body.key);
+    
+    this.logger?.info({ message: 'REMOVE GLOBAL HEADER END', meta: { key: body.key, logContext }, context: 'HttpClientController' });
     return { removed: body.key };
   }
 
   @Get('global-headers')
   getGlobalHeaders() {
-    return this.httpRedis.getGlobalHeaders();
+    const logContext = { className: HttpClientController.name, methodName: 'getGlobalHeaders' };
+    const headers = this.httpRedis.getGlobalHeaders();
+    this.logger?.info({ message: 'GET GLOBAL HEADERS', meta: { headers, logContext }, context: 'HttpClientController' });
+    return headers;
   }
 
   @Post('set-token')
   async setToken(@Body() body: { token: string; type?: string }) {
-    const t = body.type ?? 'Bearer';
-    this.httpRedis.setAuthToken({ token: body.token, type: t });
-    return { auth: `${t} ${body.token}` };
+    const logContext = { className: HttpClientController.name, methodName: 'setToken' };
+    const type = body.type ?? 'Bearer';
+    this.logger?.info({ message: 'SET AUTH TOKEN START', meta: { type, logContext }, context: 'HttpClientController' });
+    
+    this.httpRedis.setAuthToken({ token: body.token, type });
+    
+    this.logger?.info({ message: 'SET AUTH TOKEN END', meta: { type, logContext }, context: 'HttpClientController' });
+    return { auth: `${type} ${body.token}` };
   }
 
   @Post('clear-token')
   async clearToken() {
+    const logContext = { className: HttpClientController.name, methodName: 'clearToken' };
+    this.logger?.info({ message: 'CLEAR AUTH TOKEN', meta: { logContext }, context: 'HttpClientController' });
     this.httpRedis.clearAuthToken();
     return { ok: true };
   }
 
   @Post('add-interceptors')
   addInterceptors() {
+    const logContext = { className: HttpClientController.name, methodName: 'addInterceptors' };
+    this.logger?.info({ message: 'ADD INTERCEPTORS START', meta: { logContext }, context: 'HttpClientController' });
+
     lastRequestInterceptorId = this.httpRedis.addRequestInterceptor(
       (cfg: any) => {
         cfg.headers = cfg.headers || {};
@@ -296,6 +328,12 @@ export class HttpClientController {
       },
     );
 
+    this.logger?.info({ 
+      message: 'ADD INTERCEPTORS END', 
+      meta: { requestIdx: lastRequestInterceptorId, responseIdx: lastResponseInterceptorId, logContext }, 
+      context: 'HttpClientController' 
+    });
+
     return {
       requestId: lastRequestInterceptorId,
       responseId: lastResponseInterceptorId,
@@ -304,17 +342,27 @@ export class HttpClientController {
 
   @Post('remove-interceptors')
   removeInterceptors() {
+    const logContext = { className: HttpClientController.name, methodName: 'removeInterceptors' };
+    this.logger?.info({ message: 'REMOVE INTERCEPTORS START', meta: { logContext }, context: 'HttpClientController' });
+
     if (lastRequestInterceptorId != null)
       this.httpRedis.removeRequestInterceptor(lastRequestInterceptorId);
     if (lastResponseInterceptorId != null)
       this.httpRedis.removeResponseInterceptor(lastResponseInterceptorId);
+    
+    const removedIds = { request: lastRequestInterceptorId, response: lastResponseInterceptorId };
     lastRequestInterceptorId = null;
     lastResponseInterceptorId = null;
+
+    this.logger?.info({ message: 'REMOVE INTERCEPTORS END', meta: { removedIds, logContext }, context: 'HttpClientController' });
     return { removed: true };
   }
 
   @Post('add-error-interceptor')
   addErrorInterceptor() {
+    const logContext = { className: HttpClientController.name, methodName: 'addErrorInterceptor' };
+    this.logger?.info({ message: 'ADD ERROR INTERCEPTOR START', meta: { logContext }, context: 'HttpClientController' });
+
     lastErrorInterceptorId = this.httpRedis.addErrorInterceptor(
       (error: any) => {
         if (error && typeof error === 'object') {
@@ -324,24 +372,35 @@ export class HttpClientController {
       },
     );
 
+    this.logger?.info({ message: 'ADD ERROR INTERCEPTOR END', meta: { id: lastErrorInterceptorId, logContext }, context: 'HttpClientController' });
     return { errorInterceptorId: lastErrorInterceptorId };
   }
 
   @Post('remove-error-interceptor')
   removeErrorInterceptor() {
+    const logContext = { className: HttpClientController.name, methodName: 'removeErrorInterceptor' };
+    this.logger?.info({ message: 'REMOVE ERROR INTERCEPTOR START', meta: { logContext }, context: 'HttpClientController' });
+
     if (lastErrorInterceptorId != null) {
       this.httpRedis.removeErrorInterceptor(lastErrorInterceptorId);
       const removedId = lastErrorInterceptorId;
       lastErrorInterceptorId = null;
+      this.logger?.info({ message: 'REMOVE ERROR INTERCEPTOR END', meta: { removedId, logContext }, context: 'HttpClientController' });
       return { removed: true, errorInterceptorId: removedId };
     }
 
+    this.logger?.info({ message: 'REMOVE ERROR INTERCEPTOR SKIP (not found)', meta: { logContext }, context: 'HttpClientController' });
     return { removed: false };
   }
 
   @Post('clear-cache')
   clearCache(@Body() body?: { key?: string }) {
+    const logContext = { className: HttpClientController.name, methodName: 'clearCache' };
+    this.logger?.info({ message: 'CLEAR CACHE START', meta: { key: body?.key || 'all', logContext }, context: 'HttpClientController' });
+    
     this.httpRedis.clearCache(body?.key);
+    
+    this.logger?.info({ message: 'CLEAR CACHE END', meta: { cleared: body?.key ?? 'all', logContext }, context: 'HttpClientController' });
     return { cleared: body?.key ?? 'all' };
   }
 

@@ -14,3 +14,4 @@ export { HttpMethod, ContentType } from "./http.interface";
 export { UseHttpRequestId } from "./request-id/use-http-request-id.decorator";
 export { HttpRequestIdInterceptor } from "./request-id/http-request-id.interceptor";
 export type { HttpRequestIdOptions } from "./request-id/http-request-id.types";
+export { getHttpRequestContext } from "./context/http-request-context.service";
