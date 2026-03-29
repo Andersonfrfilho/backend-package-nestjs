@@ -12,7 +12,6 @@
   "commit": false,
   "ignore": [
     "example",
-    "@adatechnology/shared",
     "@adatechnology/package-nestjs"
   ],
   "privatePackages": {
