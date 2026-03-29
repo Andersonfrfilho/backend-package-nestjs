@@ -7,7 +7,7 @@
 [34mCJS[39m Build start
 [33mCJS[39m [33mYou have emitDecoratorMetadata enabled but @swc/core was not installed, skipping swc plugin[39m
 [32mCJS[39m [1mdist/index.js [22m[32m41.34 KB[39m
-[32mCJS[39m ⚡️ Build success in 30ms
+[32mCJS[39m ⚡️ Build success in 16ms
 DTS Build start
-DTS ⚡️ Build success in 824ms
+DTS ⚡️ Build success in 1084ms
 DTS dist/index.d.ts 11.12 KB

@@ -22,9 +22,9 @@ export class KeycloakDemoService {
    */
   async loginWithCredentials(username: string, password: string): Promise<any> {
     // @ts-ignore: method exists on implementation
-    return (this.keycloakClient as any).getTokenWithCredentials(
+    return (this.keycloakClient as any).getTokenWithCredentials({
       username,
       password,
-    );
+    });
   }
 }
