@@ -49,7 +49,10 @@ export class ErrorMapperService {
           message,
           status,
           code: obj.code as string | undefined,
-          context,
+          context: {
+            ...context,
+            data: resp.data,
+          },
         };
       }
 

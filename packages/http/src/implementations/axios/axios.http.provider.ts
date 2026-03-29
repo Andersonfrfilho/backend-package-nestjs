@@ -102,7 +102,9 @@ export class AxiosHttpProvider implements AxiosHttpProviderInterface {
             headers: this.loggingConfig?.includeHeaders
               ? this.sanitizeHeaders(config.headers as Record<string, unknown>)
               : undefined,
-            data: this.loggingConfig?.includeBody ? config.data : undefined,
+            data: this.loggingConfig?.includeBody
+              ? this.sanitizeBody(config.data)
+              : undefined,
           }, method);
         }
 
@@ -143,7 +145,9 @@ export class AxiosHttpProvider implements AxiosHttpProviderInterface {
                   response.headers as Record<string, unknown>,
                 )
               : undefined,
-            data: this.loggingConfig?.includeBody ? response.data : undefined,
+            data: this.loggingConfig?.includeBody
+              ? this.sanitizeBody(response.data)
+              : undefined,
           }, method);
         }
 
@@ -168,7 +172,7 @@ export class AxiosHttpProvider implements AxiosHttpProviderInterface {
             durationMs,
             message: String(error.message),
             responseData: this.loggingConfig?.includeBody
-              ? error.response?.data
+              ? this.sanitizeBody(error.response?.data)
               : undefined,
           }, method);
         }
@@ -344,6 +348,45 @@ export class AxiosHttpProvider implements AxiosHttpProviderInterface {
     }
 
     return sanitized;
+  }
+
+  /**
+   * Redacts sensitive information from the request/response body.
+   */
+  private sanitizeBody(data: any): any {
+    if (!data || typeof data !== "object") {
+      return data;
+    }
+
+    try {
+      const keysToMask = [
+        "access_token",
+        "refresh_token",
+        "password",
+        "client_secret",
+        "id_token",
+      ];
+      // Work with a copy to avoid mutating the original response/request object
+      const sanitized = Array.isArray(data) ? [...data] : { ...data };
+
+      for (const key of Object.keys(sanitized)) {
+        if (
+          keysToMask.includes(key.toLowerCase()) &&
+          typeof sanitized[key] === "string"
+        ) {
+          sanitized[key] = AxiosHttpProvider.maskToken(sanitized[key], 6);
+        } else if (
+          typeof sanitized[key] === "object" &&
+          sanitized[key] !== null
+        ) {
+          sanitized[key] = this.sanitizeBody(sanitized[key]);
+        }
+      }
+
+      return sanitized;
+    } catch (e) {
+      return "[redacted due to sanitization error]";
+    }
   }
 
   private extractLogContext(config?: unknown): HttpRequestLogContext {

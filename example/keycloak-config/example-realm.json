@@ -21,7 +21,9 @@
   "clients": [
     {
       "clientId": "example-client",
-      "publicClient": true,
+      "publicClient": false,
+      "secret": "example-secret",
+      "serviceAccountsEnabled": true,
       "directAccessGrantsEnabled": true,
       "defaultClientScopes": [
         "openid",

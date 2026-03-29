@@ -28,6 +28,7 @@ export class KeycloakModule {
           {
             logging: {
               enabled: true,
+              includeBody: true,
               context: "KeycloakHttpClient",
               environments: ["development", "test"],
             },

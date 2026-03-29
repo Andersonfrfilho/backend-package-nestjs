@@ -13,37 +13,33 @@ import { KeycloakError } from "./errors/keycloak-error";
 const LIB_NAME = "@adatechnology/auth-keycloak";
 const LIB_VERSION = "0.0.2";
 
-function extractErrorInfo(err: unknown) {
-  const e = err as Record<string, unknown> | undefined;
-  if (e && typeof e.response === "object" && e.response !== null) {
-    const resp = e.response as Record<string, unknown>;
-    const statusCode =
-      typeof resp.status === "number" ? (resp.status as number) : undefined;
-    const details = resp.data ?? undefined;
-    let keycloakError: string | undefined = undefined;
-    if (
-      details &&
-      typeof details === "object" &&
-      "error" in (details as Record<string, unknown>)
-    ) {
-      const raw = (details as Record<string, unknown>).error;
-      if (typeof raw === "string") keycloakError = raw;
-      else {
-        try {
-          keycloakError = JSON.stringify(raw);
-        } catch {
-          keycloakError = String(raw);
-        }
+function extractErrorInfo(err: any) {
+  // Support both raw AxiosError and our mapped HttpClientError
+  const statusCode = err?.status ?? err?.response?.status;
+  const details = err?.response?.data ?? err?.context?.data ?? err?.context ?? err?.details;
+  const errorCode = err?.code ?? err?.response?.data?.error;
+
+  let keycloakError: string | undefined = undefined;
+
+  if (details && typeof details === "object" && details !== null) {
+    const raw = (details as Record<string, unknown>).error;
+    if (typeof raw === "string") {
+      keycloakError = raw;
+    } else if (raw) {
+      try {
+        keycloakError = JSON.stringify(raw);
+      } catch {
+        keycloakError = String(raw);
       }
     }
-
-    return { statusCode, details, keycloakError };
   }
-  
-  // Network errors (e.g., ECONNREFUSED) won't have a response object
+
   return {
-    details: e?.message ? String(e.message) : undefined,
-    keycloakError: e?.code ? `NETWORK_ERROR_${String(e.code)}` : undefined,
+    statusCode,
+    details: details ?? err?.message,
+    keycloakError:
+      keycloakError ??
+      (errorCode ? `NETWORK_ERROR_${String(errorCode)}` : undefined),
   };
 }
 
