@@ -1,21 +1,17 @@
 {
   "$schema": "https://unpkg.com/@changesets/config@2.3.0/schema.json",
-  "changelog": [
-    "@changesets/changelog-github",
-    {
-      "repo": "Andersonfrfilho/backend-package-nestjs"
-    }
-  ],
+  "changelog": false,
   "access": "public",
   "baseBranch": "main",
   "updateInternalDependencies": "patch",
   "commit": false,
   "ignore": [
     "example",
-    "@adatechnology/package-nestjs"
+    "@adatechnology/package-nestjs",
+    "@adatechnology/shared"
   ],
   "privatePackages": {
-    "version": false,
+    "version": true,
     "tag": false
   },
   "fixed": []
