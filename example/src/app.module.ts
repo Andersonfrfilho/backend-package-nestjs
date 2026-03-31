@@ -7,7 +7,6 @@ import { HttpClientModule } from './http-client/http-client.module';
 import {
   KeycloakModule,
   KEYCLOAK_HTTP_INTERCEPTOR,
-  RolesGuard,
 } from '@adatechnology/auth-keycloak';
 import { SecureModule } from './secure/secure.module';
 import { KeycloakDemoModule } from './keycloak-demo/keycloak-demo.module';
