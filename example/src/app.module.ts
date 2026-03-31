@@ -14,7 +14,6 @@ import { LoggerModule, RequestContextMiddleware } from '@adatechnology/logger';
 
 @Module({
   imports: [
-    // register the example library with options
     LoggerModule.forRoot({
       level: 'debug',
       context: 'ExampleApp',
