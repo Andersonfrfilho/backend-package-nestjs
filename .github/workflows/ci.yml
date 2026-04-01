@@ -29,3 +29,6 @@ jobs:
 
       - name: Build libs (ordered)
         run: pnpm run build:libs-ordered
+
+      - name: Build full workspace
+        run: pnpm run build
