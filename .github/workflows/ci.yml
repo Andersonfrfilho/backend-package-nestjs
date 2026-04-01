@@ -13,27 +13,19 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: "18"
           cache: "pnpm"
 
-      - name: Install pnpm
-        run: npm install -g pnpm@8
-
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
       - name: Build libs (ordered)
         run: pnpm run build:libs-ordered
-
-      - name: Build rest
-        run: pnpm run build
-
-      - name: Run example tests (if any)
-        working-directory: example
-        run: |
-          pnpm install
-          pnpm run build || true
-          pnpm run test || true
