@@ -1,1 +1,4 @@
 
+> @adatechnology/shared@0.0.2 build /Users/anderson.filho/Documents/personal/backend-package-nestjs/packages/shared
+> tsc -p tsconfig.json
+

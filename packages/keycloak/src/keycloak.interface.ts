@@ -52,6 +52,15 @@ export interface KeycloakClientInterface {
   getAccessToken(): Promise<string>;
 
   /**
+   * Obtain a token using resource-owner credentials (username/password).
+   * Returns the full Keycloak token response so callers can access refresh tokens and other fields.
+   */
+  getTokenWithCredentials(params: {
+    username: string;
+    password: string;
+  }): Promise<KeycloakTokenResponse>;
+
+  /**
    * Refresh access token
    */
   refreshToken(refreshToken: string): Promise<KeycloakTokenResponse>;
@@ -65,7 +74,18 @@ export interface KeycloakClientInterface {
    * Get user info
    */
   getUserInfo(token: string): Promise<Record<string, unknown>>;
+
+  /**
+   * Clear the internal access token cache maintained by the client.
+   */
+  clearTokenCache(): void;
 }
+
+/**
+ * Provider-facing interface type to be used when injecting the keycloak provider token.
+ * Exported separately to make the intended injection type explicit.
+ */
+export type KeycloakProviderInterface = KeycloakClientInterface;
 
 /**
  * Minimal shape for decoded JWT payloads used by the RolesGuard.

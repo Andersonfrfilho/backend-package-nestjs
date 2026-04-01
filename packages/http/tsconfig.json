@@ -5,13 +5,13 @@
     "moduleResolution": "node",
     "outDir": "dist",
     "rootDir": "src",
-    "declarationDir": "dist/types",
+    "declarationDir": "dist",
     "declaration": true,
     "composite": true
     ,
     "paths": {
-      "@adatechnology/logger": ["../logger/dist/types", "../logger/dist"],
-      "@adatechnology/logger/*": ["../logger/dist/types/*", "../logger/dist/*"]
+      "@adatechnology/logger": ["../logger/dist", "../logger/dist"],
+      "@adatechnology/logger/*": ["../logger/dist/*", "../logger/dist/*"]
     }
   },
   "include": [

@@ -9,7 +9,11 @@ import type { AxiosRequestConfig, AxiosInstance } from "axios";
 import { KeycloakClient } from "./keycloak.client";
 import { KeycloakHttpInterceptor } from "./keycloak.http.interceptor";
 import { RolesGuard } from "./roles.guard";
-import { KEYCLOAK_CLIENT, KEYCLOAK_HTTP_INTERCEPTOR } from "./keycloak.token";
+import {
+  KEYCLOAK_CLIENT,
+  KEYCLOAK_HTTP_INTERCEPTOR,
+  KEYCLOAK_PROVIDER,
+} from "./keycloak.token";
 import { KeycloakConfig } from "./keycloak.interface";
 import { KEYCLOAK_CONFIG } from "./keycloak.token";
 
@@ -45,7 +49,15 @@ export class KeycloakModule {
             httpProvider: HttpProviderInterface,
             logger?: LoggerProviderInterface,
           ) => new KeycloakClient(cfg, httpProvider, logger),
-          inject: [KEYCLOAK_CONFIG, HTTP_PROVIDER, { token: LOGGER_PROVIDER, optional: true }],
+          inject: [
+            KEYCLOAK_CONFIG,
+            HTTP_PROVIDER,
+            { token: LOGGER_PROVIDER, optional: true },
+          ],
+        },
+        {
+          provide: KEYCLOAK_PROVIDER,
+          useExisting: KEYCLOAK_CLIENT,
         },
         {
           provide: KEYCLOAK_HTTP_INTERCEPTOR,
@@ -56,6 +68,7 @@ export class KeycloakModule {
       exports: [
         Reflector,
         KEYCLOAK_CLIENT,
+        KEYCLOAK_PROVIDER,
         KEYCLOAK_HTTP_INTERCEPTOR,
         KEYCLOAK_CONFIG,
         RolesGuard,
