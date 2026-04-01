@@ -157,9 +157,6 @@ importers:
       '@adatechnology/logger':
         specifier: workspace:*
         version: link:../logger
-      '@adatechnology/shared':
-        specifier: workspace:*
-        version: link:../shared
       '@nestjs/common':
         specifier: ^11.0.16
         version: 11.1.16(reflect-metadata@0.2.2)(rxjs@7.8.2)
@@ -204,9 +201,6 @@ importers:
       '@adatechnology/logger':
         specifier: workspace:*
         version: link:../logger
-      '@adatechnology/shared':
-        specifier: workspace:*
-        version: link:../shared
       '@nestjs/common':
         specifier: ^11.0.16
         version: 11.1.16(reflect-metadata@0.2.2)(rxjs@7.8.2)
