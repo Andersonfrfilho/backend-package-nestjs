@@ -157,9 +157,6 @@ importers:
       '@adatechnology/logger':
         specifier: workspace:*
         version: link:../logger
-      '@adatechnology/shared':
-        specifier: workspace:*
-        version: link:../shared
       '@nestjs/common':
         specifier: ^11.0.16
         version: 11.1.16(reflect-metadata@0.2.2)(rxjs@7.8.2)
@@ -204,9 +201,6 @@ importers:
       '@adatechnology/logger':
         specifier: workspace:*
         version: link:../logger
-      '@adatechnology/shared':
-        specifier: workspace:*
-        version: link:../shared
       '@nestjs/common':
         specifier: ^11.0.16
         version: 11.1.16(reflect-metadata@0.2.2)(rxjs@7.8.2)
@@ -214,6 +208,9 @@ importers:
         specifier: ^11
         version: 11.1.14(@nestjs/common@11.1.16(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/platform-express@11.1.16)(reflect-metadata@0.2.2)(rxjs@7.8.2)
     devDependencies:
+      '@adatechnology/shared':
+        specifier: workspace:*
+        version: link:../shared
       '@esbuild-plugins/tsconfig-paths':
         specifier: ^0.1.2
         version: 0.1.2(esbuild@0.27.4)(typescript@5.9.3)
