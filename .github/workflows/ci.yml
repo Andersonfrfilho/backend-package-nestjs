@@ -31,4 +31,4 @@ jobs:
         run: pnpm run build:libs-ordered
 
       - name: Build full workspace
-        run: pnpm run build
+        run: pnpm turbo run build --filter=!example --filter=!@adatechnology/package-nestjs
