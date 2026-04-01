@@ -44,7 +44,7 @@ build/
 pnpm-lock.yaml
 pnpm-workspace.yaml.bak
 .gemini/
-.github/
+# .github/ removed — workflows must be tracked
 .claude/
 .agent/
 .agents/
