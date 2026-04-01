@@ -24,7 +24,7 @@ jobs:
           registry-url: "https://registry.npmjs.org"
 
       - name: Install pnpm
-        run: npm install -g pnpm@8
+        run: npm install -g pnpm@9
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -35,6 +35,7 @@ jobs:
       - name: Publish packages via Changesets
         uses: changesets/action@v1
         with:
-          publish: npm
+          publish: pnpm run publish:changesets
         env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
