@@ -48,7 +48,7 @@ import {
 
 import { Inject, Injectable, Optional } from "@nestjs/common";
 import { CACHE_PROVIDER, CacheProviderInterface } from "@adatechnology/cache";
-import { LOGGER_PROVIDER, LoggerProviderInterface } from "@adatechnology/logger";
+import { getContext, LOGGER_PROVIDER, LoggerProviderInterface, runWithContext } from "@adatechnology/logger";
 
 /**
  * Axios-based implementation of the HTTP provider interface.
@@ -393,6 +393,9 @@ export class AxiosHttpProvider implements AxiosHttpProviderInterface {
     const requestLogContext = ((config as Record<string, unknown>)
       ?.logContext || {}) as HttpRequestLogContext;
     const decoratorContext = getHttpRequestContext();
+    // Fallback: logContext stored in logger AsyncLocalStorage (set by caller via runWithContext)
+    const asyncCtx = getContext() as Record<string, unknown> | undefined;
+    const asyncLogContext = asyncCtx?.logContext as HttpRequestLogContext | undefined;
 
     const requestIdHeaderName = this.getRequestIdHeaderName();
     const requestIdFromHeader = this.getHeaderValue({
@@ -403,7 +406,8 @@ export class AxiosHttpProvider implements AxiosHttpProviderInterface {
     let resolvedRequestId =
       requestLogContext.requestId ||
       requestIdFromHeader ||
-      decoratorContext?.requestId;
+      decoratorContext?.requestId ||
+      (asyncCtx?.requestId as string | undefined);
 
     if (!resolvedRequestId && this.shouldAutoGenerateRequestId()) {
       resolvedRequestId = randomUUID();
@@ -415,8 +419,8 @@ export class AxiosHttpProvider implements AxiosHttpProviderInterface {
     }
 
     return {
-      className: requestLogContext.className || decoratorContext?.className,
-      methodName: requestLogContext.methodName || decoratorContext?.methodName,
+      className: requestLogContext.className || decoratorContext?.className || asyncLogContext?.className,
+      methodName: requestLogContext.methodName || decoratorContext?.methodName || asyncLogContext?.methodName,
       requestId: resolvedRequestId,
     };
   }
@@ -676,7 +680,14 @@ export class AxiosHttpProvider implements AxiosHttpProviderInterface {
    */
   async get<T>({ url, config }: UrlConfig): Promise<HttpResponse<T>> {
     const cacheKey = this.generateCacheKey({ url, config });
-    const cached = await this.getCached<T>(cacheKey);
+    const logContext = (config as any)?.logContext;
+    const withCallerCtx = <R>(fn: () => Promise<R>): Promise<R> => {
+      if (!logContext) return fn();
+      const current = getContext() ?? {};
+      return runWithContext({ ...current, logContext }, fn);
+    };
+
+    const cached = await withCallerCtx(() => this.getCached<T>(cacheKey));
     if (cached) {
       return {
         data: cached,
@@ -688,7 +699,7 @@ export class AxiosHttpProvider implements AxiosHttpProviderInterface {
     }
 
     return this.wrapWithErrorInterceptors(() =>
-      this.performGet<T>({ url, config, cacheKey }),
+      withCallerCtx(() => this.performGet<T>({ url, config, cacheKey })),
     );
   }
 

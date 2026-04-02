@@ -25,38 +25,45 @@
 
 [Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
 
-## Exemplo completo do módulo HTTP
+## Módulos de demonstração
 
-O projeto `example` já está configurado para demonstrar o pacote `@adatechnology/http-client` com logs.
+O projeto `example` demonstra todos os pacotes `@adatechnology/*` com propagação de log em cascata.
 
-### Como está configurado
+### Configuração global (AppModule)
 
-- `LoggerModule.forRoot()` ativo no `AppModule`.
-- `RequestContextMiddleware` ativo para incluir `requestId` no contexto.
-- `HttpModule.forRoot(...)` no `HttpClientModule` com `logging` habilitado para `development` e `test`.
+- `LoggerModule.forRoot()` — provedor de logs com `AsyncLocalStorage` para `requestId` e `logContext`.
+- `RequestContextMiddleware` — injeta `requestId` em cada requisição HTTP.
+- `CacheModule.forRoot()` — registra `CACHE_PROVIDER` (InMemoryCacheProvider) globalmente. Usado pelo `KeycloakClient` automaticamente.
 
-### Endpoints de demonstração
+### Módulos ativos
 
-Base: `http://localhost:3000/http-client`
+| Módulo | Base path | README |
+|---|---|---|
+| `HttpClientModule` | `/http-client` | [README-HTTP.md](./README-HTTP.md) |
+| `CacheDemoModule` | `/cache-demo` | [README-cache.md](./README-cache.md) |
+| `KeycloakDemoModule` | `/keycloak` | [README-keycloak.md](./README-keycloak.md) |
+| `SecureModule` | `/secure` | — |
 
-- `GET /pokemon` → lista pokémons com `logContext` (`className` e `methodName`).
-- `GET /pokemon/:id` → busca um pokémon por id com `logContext`.
-- `GET /pokemon/:id/with-request-id` → aceita header `x-request-id` e envia no `logContext`.
-- `GET /code-samples` → retorna snippets de configuração (`forRoot`, `interceptors`, `logContext`).
+### Propagação de contexto (cascade)
 
-### Exemplo de uso de `logContext`
+Todos os módulos usam o padrão `runWithContext` para propagar `logContext` via `AsyncLocalStorage`:
 
 ```ts
-await this.http.get('/pokemon/1', {
-  logContext: {
-    className: 'PokemonService',
-    methodName: 'findOne',
-    requestId: 'req-123',
-  },
-});
+private withCtx<T>(logContext: object, fn: () => Promise<T>): Promise<T> {
+  return runWithContext({ ...(getContext() ?? {}), logContext }, fn);
+}
 ```
 
-Com isso, os logs do HTTP passam a conter metadados de origem da chamada (`source`) e correlação (`requestId`).
+Resultado nos logs:
+```
+[Controller.method] → [HttpClient.get] → [InMemoryCacheProvider.get]   Cache miss
+[Controller.method] → [HttpClient.get]                                  HTTP GET ...
+[Controller.method] → [HttpClient.get] → [InMemoryCacheProvider.set]   Cache set
+
+[Controller.method] → [KeycloakClient.getAccessToken] → [InMemoryCacheProvider.get]  Cache miss
+[Controller.method] → [KeycloakClient.requestToken]                                  HTTP POST /token
+[Controller.method] → [InMemoryCacheProvider.set]                                    Cache set: keycloak:access_token
+```
 
 ## Project setup
 

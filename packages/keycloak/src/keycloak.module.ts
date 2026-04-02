@@ -4,6 +4,8 @@ import { HTTP_PROVIDER, HttpModule } from "@adatechnology/http-client";
 import type { HttpProviderInterface } from "@adatechnology/http-client";
 import { LOGGER_PROVIDER } from "@adatechnology/logger";
 import type { LoggerProviderInterface } from "@adatechnology/logger";
+import { CACHE_PROVIDER } from "@adatechnology/cache";
+import type { CacheProviderInterface } from "@adatechnology/cache";
 import type { AxiosRequestConfig, AxiosInstance } from "axios";
 
 import { KeycloakClient } from "./keycloak.client";
@@ -48,11 +50,13 @@ export class KeycloakModule {
             cfg: KeycloakConfig,
             httpProvider: HttpProviderInterface,
             logger?: LoggerProviderInterface,
-          ) => new KeycloakClient(cfg, httpProvider, logger),
+            cacheProvider?: CacheProviderInterface,
+          ) => new KeycloakClient(cfg, httpProvider, logger, cacheProvider),
           inject: [
             KEYCLOAK_CONFIG,
             HTTP_PROVIDER,
             { token: LOGGER_PROVIDER, optional: true },
+            { token: CACHE_PROVIDER, optional: true },
           ],
         },
         {

@@ -78,7 +78,7 @@ export interface KeycloakClientInterface {
   /**
    * Clear the internal access token cache maintained by the client.
    */
-  clearTokenCache(): void;
+  clearTokenCache(): Promise<void>;
 }
 
 /**

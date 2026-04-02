@@ -1,6 +1,6 @@
 {
   "name": "@adatechnology/auth-keycloak",
-  "version": "0.0.7",
+  "version": "0.0.8",
   "publishConfig": {
     "access": "public"
   },
@@ -17,6 +17,7 @@
     "test": "echo \"no tests\""
   },
   "dependencies": {
+    "@adatechnology/cache": "workspace:*",
     "@adatechnology/http-client": "workspace:*",
     "@adatechnology/logger": "workspace:*"
   },

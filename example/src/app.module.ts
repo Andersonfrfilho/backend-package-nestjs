@@ -8,8 +8,10 @@ import {
   KeycloakModule,
   KEYCLOAK_HTTP_INTERCEPTOR,
 } from '@adatechnology/auth-keycloak';
+import { CacheModule } from '@adatechnology/cache';
 import { SecureModule } from './secure/secure.module';
 import { KeycloakDemoModule } from './keycloak-demo/keycloak-demo.module';
+import { CacheDemoModule } from './cache-demo/cache-demo.module';
 import { LoggerModule, RequestContextMiddleware } from '@adatechnology/logger';
 
 @Module({
@@ -23,9 +25,16 @@ import { LoggerModule, RequestContextMiddleware } from '@adatechnology/logger';
       colorize: true,
     }),
     ExampleModule.forRoot({ prefix: 'demo', enabled: true }),
+    // registers CACHE_PROVIDER (InMemoryCacheProvider) globally
+    // KeycloakModule will automatically use this cache for token storage
+    CacheModule.forRoot({
+      encryptionSecret: process.env.CACHE_ENCRYPTION_SECRET || 'example-secret-change-in-production',
+    }),
     // example http-client demo module
     // demonstrates usage of the shared http-client package against jsonplaceholder
     HttpClientModule,
+    // direct cache usage demo (GET/POST /cache-demo/*)
+    CacheDemoModule,
     // example Keycloak infra (configured with example values)
     KeycloakModule.forRoot({
       // allow overriding the Keycloak URL/port via environment for local testing
@@ -44,7 +53,7 @@ import { LoggerModule, RequestContextMiddleware } from '@adatechnology/logger';
       },
     }),
     // demo module that exposes endpoints to exercise KeycloakClient
-    // (GET /keycloak/token, GET /keycloak/userinfo?token=...)
+    // (GET /keycloak/token, POST /keycloak/login, GET /keycloak/validate, etc.)
     KeycloakDemoModule,
     // secure demo that shows role-based decorators & guard
     SecureModule,

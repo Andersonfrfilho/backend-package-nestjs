@@ -54,6 +54,9 @@ importers:
       '@adatechnology/auth-keycloak':
         specifier: workspace:*
         version: link:../packages/keycloak
+      '@adatechnology/cache':
+        specifier: workspace:*
+        version: link:../packages/cache
       '@adatechnology/http-client':
         specifier: workspace:*
         version: link:../packages/http
@@ -195,6 +198,9 @@ importers:
 
   packages/keycloak:
     dependencies:
+      '@adatechnology/cache':
+        specifier: workspace:*
+        version: link:../cache
       '@adatechnology/http-client':
         specifier: workspace:*
         version: link:../http

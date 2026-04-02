@@ -5,34 +5,35 @@ Módulo Keycloak para autenticação de clients e usuários, seguindo o padrão 
 Este pacote fornece um cliente leve para interagir com o Keycloak (obter/refresh de tokens, introspecção, userinfo)
 e um interceptor opcional. O módulo foi projetado para ser usado junto ao `@adatechnology/http-client`.
 
-Principais exportações
+### Principais exportações
 
-- `KeycloakModule` — módulo principal. Suporta `KeycloakModule.forRoot(config?)` (padrão dinâmico).
-- `KEYCLOAK_CLIENT` — provider token para injetar o cliente Keycloak (use `@Inject(KEYCLOAK_CLIENT)`).
-- `KEYCLOAK_HTTP_INTERCEPTOR` — provider token para injetar o interceptor (se necessário).
+- `KeycloakModule` — módulo principal. Suporta `KeycloakModule.forRoot(config?)`.
+- `KEYCLOAK_CLIENT` — provider token para injetar o cliente Keycloak (`@Inject(KEYCLOAK_CLIENT)`).
+- `KEYCLOAK_HTTP_INTERCEPTOR` — provider token para injetar o interceptor (opcional).
+- `Roles` / `RolesGuard` — decorator e guard para autorização baseada em roles.
+- `KeycloakError` — classe de erro tipada com `statusCode` e `details`.
 
-Instalação
+### Instalação
 
-Este pacote já declara dependência interna de workspace para `@adatechnology/http-client`. Em um monorepo PNPM/Turbo o pacote é resolvido automaticamente.
+```bash
+# Este pacote já declara dependências de workspace para http-client, logger e cache.
+# Em um monorepo PNPM/Turbo os pacotes são resolvidos automaticamente.
+```
 
-Uso
-
-- Configuração via código (recomendado quando quiser injetar configuração manualmente):
+### Uso básico
 
 ```ts
 import { Module } from "@nestjs/common";
-import { HttpModule } from "@adatechnology/http-client";
 import { KeycloakModule } from "@adatechnology/auth-keycloak";
 
 @Module({
   imports: [
-    HttpModule.forRoot({ baseURL: "https://pokeapi.co/api/v2", timeout: 5000 }),
     KeycloakModule.forRoot({
       baseUrl: "https://keycloak.example.com",
-      realm: "BACKEND",
+      realm: "myrealm",
       credentials: {
-        clientId: "backend-api",
-        clientSecret: "backend-api-secret",
+        clientId: "my-client",
+        clientSecret: "my-secret",
         grantType: "client_credentials",
       },
     }),
@@ -41,68 +42,125 @@ import { KeycloakModule } from "@adatechnology/auth-keycloak";
 export class AppModule {}
 ```
 
-- Configuração via `ConfigService` / variáveis de ambiente (padrão quando não passar `forRoot`):
-
-As variáveis usadas pelo módulo interno são:
-
-- `KEYCLOAK_BASE_URL` (padrão: `http://localhost:8081`)
-- `KEYCLOAK_REALM` (padrão: `BACKEND`)
-- `KEYCLOAK_CLIENT_ID` (padrão: `backend-api`)
-- `KEYCLOAK_CLIENT_SECRET` (padrão: `backend-api-secret`)
-
-API rápida (via token)
-
-- `KEYCLOAK_CLIENT.getAccessToken()` — obtém token com cache e deduplicação de requisições.
-- `KEYCLOAK_CLIENT.refreshToken(refreshToken)` — renova token.
-- `KEYCLOAK_CLIENT.validateToken(token)` — introspecção no Keycloak.
-- `KEYCLOAK_CLIENT.getUserInfo(token)` — retorna userinfo.
-
-Exemplo de injeção no NestJS:
+### Injeção do cliente
 
 ```ts
 import { Inject } from '@nestjs/common';
 import { KEYCLOAK_CLIENT } from '@adatechnology/auth-keycloak';
 import type { KeycloakClientInterface } from '@adatechnology/auth-keycloak';
 
-constructor(@Inject(KEYCLOAK_CLIENT) private readonly keycloakClient: KeycloakClientInterface) {}
+constructor(
+  @Inject(KEYCLOAK_CLIENT) private readonly keycloakClient: KeycloakClientInterface,
+) {}
 ```
 
-Notas
+### API do cliente
 
-- Este módulo depende de `@adatechnology/http-client` (provider `HTTP_PROVIDER`) para realizar chamadas HTTP ao Keycloak. Configure o `HttpModule` conforme necessário na aplicação que consome este pacote.
-- O interceptor `KeycloakHttpInterceptor` é fornecido caso queira integrar com outras camadas que aceitem interceptors.
+| Método | Descrição |
+|---|---|
+| `getAccessToken()` | Obtém token com cache automático e deduplicação de requisições |
+| `getTokenWithCredentials({ username, password })` | Login com credenciais (resource-owner password grant) |
+| `refreshToken(refreshToken)` | Renova token e atualiza o cache interno |
+| `validateToken(token)` | Introspecção via endpoint `/token/introspect` |
+| `getUserInfo(token)` | Retorna claims via endpoint `/userinfo` |
+| `clearTokenCache()` | Remove o token do cache (útil para forçar renovação) |
 
-## Autorização (decorator @Roles)
+### Cache de token
 
-O pacote agora fornece um decorator `@Roles()` e um `RolesGuard` para uso nas rotas do NestJS. Exemplos:
+O `KeycloakClient` usa `@adatechnology/cache` para armazenar o access token obtido via `client_credentials`.
+Por padrão é criado um `InMemoryCacheProvider` local. Você pode substituir por Redis ou qualquer implementação
+de `CacheProviderInterface` injetando o provider `CACHE_PROVIDER` no contexto do módulo:
+
+```ts
+import { Module } from "@nestjs/common";
+import { CacheModule } from "@adatechnology/cache";
+import { KeycloakModule } from "@adatechnology/auth-keycloak";
+
+@Module({
+  imports: [
+    // Registra CACHE_PROVIDER como Redis — KeycloakClient o usará automaticamente
+    CacheModule.forRoot({
+      type: 'redis',
+      redis: { host: 'localhost', port: 6379 },
+    }),
+    KeycloakModule.forRoot({ ... }),
+  ],
+})
+export class AppModule {}
+```
+
+Se `CACHE_PROVIDER` não for registrado no módulo, o `KeycloakClient` cria um `InMemoryCacheProvider`
+interno sem necessidade de configuração adicional.
+
+O TTL do cache é derivado do campo `expires_in` do token (com 60 segundos de margem). Você pode
+sobrescrever com a opção `tokenCacheTtl` (em **milissegundos**):
+
+```ts
+KeycloakModule.forRoot({
+  ...
+  tokenCacheTtl: 60_000, // força TTL de 60 s independente do token
+})
+```
+
+### Propagação de contexto de log (cascade)
+
+O cliente lê o `logContext` do `AsyncLocalStorage` da lib `@adatechnology/logger`. Para que os logs
+de downstream (keycloak → cache) mostrem `className.methodName` da origem correta, use `runWithContext`
+no controller:
+
+```ts
+import { getContext, runWithContext } from '@adatechnology/logger';
+
+// No controller
+private withCtx<T>(logContext: object, fn: () => Promise<T>): Promise<T> {
+  return runWithContext({ ...(getContext() ?? {}), logContext }, fn);
+}
+
+async getToken() {
+  const logContext = { className: 'MyController', methodName: 'getToken' };
+  return this.withCtx(logContext, () => this.keycloakService.getAccessToken());
+}
+```
+
+Resultado no log:
+```
+[MyController.getToken][KeycloakClient.getAccessToken] → cache miss → request token
+[MyController.getToken][InMemoryCacheProvider.set] → token cached
+```
+
+### Autorização com @Roles
 
 ```ts
 import { Controller, Get, UseGuards } from "@nestjs/common";
-import { Roles } from "@adatechnology/auth-keycloak";
-import { RolesGuard } from "@adatechnology/auth-keycloak";
+import { Roles, RolesGuard } from "@adatechnology/auth-keycloak";
 
 @Controller("secure")
-@UseGuards(RolesGuard)
 export class SecureController {
+  @Get("public")
+  @UseGuards(RolesGuard)
+  public() {
+    return { ok: true };
+  }
+
   @Get("admin")
-  @Roles("admin") // aceita um ou mais roles (OR por padrão)
+  @UseGuards(RolesGuard)
+  @Roles("admin")
   adminOnly() {
     return { ok: true };
   }
 
   @Get("team")
-  @Roles({ roles: ["manager", "lead"], mode: "all" }) // requer ambos (AND)
+  @UseGuards(RolesGuard)
+  @Roles({ roles: ["manager", "lead"], mode: "all" }) // AND — requer ambas as roles
   teamOnly() {
     return { ok: true };
   }
 }
 ```
 
-O `RolesGuard` extrai roles do payload do JWT (claims `realm_access.roles` e `resource_access[clientId].roles`). Por padrão o decorator verifica ambos (realm e client). Você pode ajustar o comportamento usando as opções `{ type: 'realm'|'client'|'both' }`.
+O `RolesGuard` extrai roles de `realm_access.roles` e `resource_access[clientId].roles` do JWT.
 
-## Erros
-
-O pacote exporta `KeycloakError` (classe) que é usada para representar falhas nas chamadas HTTP ao Keycloak. A classe contém `statusCode` e `details` para permitir um tratamento declarativo dos erros na aplicação que consome a biblioteca. Exemplo:
+### Tratamento de erros
 
 ```ts
 import { KeycloakError } from "@adatechnology/auth-keycloak";
@@ -111,17 +169,31 @@ try {
   await keycloakClient.getUserInfo(token);
 } catch (e) {
   if (e instanceof KeycloakError) {
-    // tratar problema específico de Keycloak
-    console.error(e.statusCode, e.details);
+    console.error(e.statusCode, e.details, e.keycloakError);
   }
   throw e;
 }
 ```
 
-Contribuições
+### Variáveis de ambiente (referência)
+
+| Variável | Padrão |
+|---|---|
+| `KEYCLOAK_BASE_URL` | `http://localhost:8081` |
+| `KEYCLOAK_REALM` | `BACKEND` |
+| `KEYCLOAK_CLIENT_ID` | `backend-api` |
+| `KEYCLOAK_CLIENT_SECRET` | `backend-api-secret` |
+
+### Notas
+
+- Este módulo depende de `@adatechnology/http-client` para chamadas HTTP ao Keycloak.
+- O interceptor `KeycloakHttpInterceptor` pode ser registrado como `APP_INTERCEPTOR` para integração global.
+- `clearTokenCache()` é assíncrono desde a versão `0.0.7` (retorna `Promise<void>`).
+
+### Contribuições
 
 Relate issues/PRs no repositório principal. Mantenha compatibilidade com o padrão usado pelo `HttpModule`.
 
-Licença
+### Licença
 
 MIT

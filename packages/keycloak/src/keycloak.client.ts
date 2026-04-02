@@ -1,7 +1,10 @@
 import { Inject, Injectable, Optional } from "@nestjs/common";
 import { HTTP_PROVIDER, getHttpRequestContext } from "@adatechnology/http-client";
 import type { HttpProviderInterface } from "@adatechnology/http-client";
-import { LOGGER_PROVIDER, LoggerProviderInterface } from "@adatechnology/logger";
+import { getContext, LOGGER_PROVIDER, LoggerProviderInterface } from "@adatechnology/logger";
+import { InMemoryCacheProvider } from "@adatechnology/cache";
+import type { CacheProviderInterface } from "@adatechnology/cache";
+import { CACHE_PROVIDER } from "@adatechnology/cache";
 
 import type {
   KeycloakClientInterface,
@@ -11,10 +14,10 @@ import type {
 import { KeycloakError } from "./errors/keycloak-error";
 
 const LIB_NAME = "@adatechnology/auth-keycloak";
-const LIB_VERSION = "0.0.2";
+const LIB_VERSION = "0.0.7";
+const TOKEN_CACHE_KEY = "keycloak:access_token";
 
 function extractErrorInfo(err: any) {
-  // Support both raw AxiosError and our mapped HttpClientError
   const statusCode = err?.status ?? err?.response?.status;
   const details = err?.response?.data ?? err?.context?.data ?? err?.context ?? err?.details;
   const errorCode = err?.code ?? err?.response?.data?.error;
@@ -48,24 +51,30 @@ function extractErrorInfo(err: any) {
  */
 @Injectable()
 export class KeycloakClient implements KeycloakClientInterface {
-  private tokenCache: { token: string; expiresAt: number } | null = null;
+  private readonly cacheProvider: CacheProviderInterface;
   private tokenPromise?: Promise<string> | null = null;
 
   constructor(
     private readonly config: KeycloakConfig,
     @Inject(HTTP_PROVIDER) private readonly httpProvider: HttpProviderInterface,
     @Optional() @Inject(LOGGER_PROVIDER) private readonly logger?: LoggerProviderInterface,
-  ) {}
+    @Optional() @Inject(CACHE_PROVIDER) cacheProvider?: CacheProviderInterface,
+  ) {
+    this.cacheProvider = cacheProvider ?? new InMemoryCacheProvider(logger);
+  }
 
   private log(level: "debug" | "info" | "warn" | "error", message: string, libMethod: string, meta?: Record<string, unknown>) {
     if (!this.logger) return;
-    
-    // Support correlation by checking HTTP request context for a requestId
+
+    const loggerCtx = getContext() as Record<string, unknown> | undefined;
     const httpCtx = getHttpRequestContext();
-    const requestId = httpCtx?.requestId;
-    const source = httpCtx?.className && httpCtx?.methodName 
-      ? `${httpCtx.className}.${httpCtx.methodName}` 
-      : undefined;
+
+    const logContext = loggerCtx?.logContext as { className?: string; methodName?: string } | undefined;
+    const requestId = (loggerCtx?.requestId as string | undefined) ?? httpCtx?.requestId;
+
+    const source = logContext?.className && logContext?.methodName
+      ? `${logContext.className}.${logContext.methodName}`
+      : (httpCtx?.className && httpCtx?.methodName ? `${httpCtx.className}.${httpCtx.methodName}` : undefined);
 
     const payload = {
       message,
@@ -87,12 +96,12 @@ export class KeycloakClient implements KeycloakClientInterface {
   async getAccessToken(): Promise<string> {
     const method = "getAccessToken";
     this.log("debug", `${method} - Start`, method);
-    
+
     // Check cache
-    const now = Date.now();
-    if (this.tokenCache && now < this.tokenCache.expiresAt) {
+    const cached = await this.cacheProvider.get<string>(TOKEN_CACHE_KEY);
+    if (cached) {
       this.log("debug", `${method} - Returning cached token`, method);
-      return this.tokenCache.token;
+      return cached;
     }
 
     if (this.tokenPromise) {
@@ -103,10 +112,10 @@ export class KeycloakClient implements KeycloakClientInterface {
     this.tokenPromise = (async (): Promise<string> => {
       try {
         const tokenResponse = await this.requestToken();
-        const expiresAt = this.config.tokenCacheTtl
-          ? Date.now() + this.config.tokenCacheTtl
-          : Date.now() + (tokenResponse.expires_in - 60) * 1000;
-        this.tokenCache = { token: tokenResponse.access_token, expiresAt };
+        const ttlSeconds = this.config.tokenCacheTtl
+          ? Math.floor(this.config.tokenCacheTtl / 1000)
+          : tokenResponse.expires_in - 60;
+        await this.cacheProvider.set(TOKEN_CACHE_KEY, tokenResponse.access_token, ttlSeconds);
         this.log("debug", `${method} - Token obtained and cached`, method);
         return tokenResponse.access_token;
       } finally {
@@ -124,7 +133,7 @@ export class KeycloakClient implements KeycloakClientInterface {
     const method = "getTokenWithCredentials";
     const { username } = params;
     this.log("info", `${method} - Start for user: ${username}`, method);
-    
+
     const { password } = params;
     const tokenUrl = `${this.config.baseUrl}/realms/${this.config.realm}/protocol/openid-connect/token`;
 
@@ -137,7 +146,6 @@ export class KeycloakClient implements KeycloakClientInterface {
       body.append("client_secret", this.config.credentials.clientSecret);
     }
 
-    // include configured scopes (default to openid/profile/email)
     body.append("scope", KeycloakClient.scopesToString(this.config.scopes));
 
     try {
@@ -155,7 +163,7 @@ export class KeycloakClient implements KeycloakClientInterface {
     } catch (err: unknown) {
       const { statusCode, details, keycloakError } = extractErrorInfo(err);
       this.log("error", `${method} - Failed for user: ${username}`, method, { statusCode, keycloakError });
-      
+
       throw new KeycloakError("Failed to obtain token with credentials", {
         statusCode,
         details,
@@ -167,7 +175,7 @@ export class KeycloakClient implements KeycloakClientInterface {
   private async requestToken(): Promise<KeycloakTokenResponse> {
     const method = "requestToken";
     this.log("debug", `${method} - Start`, method);
-    
+
     const tokenUrl = `${this.config.baseUrl}/realms/${this.config.realm}/protocol/openid-connect/token`;
 
     const data = new URLSearchParams();
@@ -184,7 +192,6 @@ export class KeycloakClient implements KeycloakClientInterface {
       ) {
         data.append("username", this.config.credentials.username);
         data.append("password", this.config.credentials.password);
-        // include configured scopes for resource-owner password grants
         data.append("scope", KeycloakClient.scopesToString(this.config.scopes));
       }
     }
@@ -203,7 +210,7 @@ export class KeycloakClient implements KeycloakClientInterface {
     } catch (err: unknown) {
       const { statusCode, details, keycloakError } = extractErrorInfo(err);
       this.log("error", `${method} - Failed`, method, { statusCode, keycloakError });
-      
+
       throw new KeycloakError("Failed to request token", {
         statusCode,
         details,
@@ -215,7 +222,7 @@ export class KeycloakClient implements KeycloakClientInterface {
   async refreshToken(refreshToken: string): Promise<KeycloakTokenResponse> {
     const method = "refreshToken";
     this.log("debug", `${method} - Start`, method);
-    
+
     const tokenUrl = `${this.config.baseUrl}/realms/${this.config.realm}/protocol/openid-connect/token`;
 
     const data = new URLSearchParams();
@@ -236,17 +243,17 @@ export class KeycloakClient implements KeycloakClientInterface {
         },
       });
 
-      const expiresAt = this.config.tokenCacheTtl
-        ? Date.now() + this.config.tokenCacheTtl
-        : Date.now() + (response.data.expires_in - 60) * 1000;
-      this.tokenCache = { token: response.data.access_token, expiresAt };
+      const ttlSeconds = this.config.tokenCacheTtl
+        ? Math.floor(this.config.tokenCacheTtl / 1000)
+        : response.data.expires_in - 60;
+      await this.cacheProvider.set(TOKEN_CACHE_KEY, response.data.access_token, ttlSeconds);
 
       this.log("debug", `${method} - Success`, method);
       return response.data;
     } catch (err: unknown) {
       const { statusCode, details, keycloakError } = extractErrorInfo(err);
       this.log("error", `${method} - Failed`, method, { statusCode, keycloakError });
-      
+
       throw new KeycloakError("Failed to refresh token", {
         statusCode,
         details,
@@ -258,7 +265,7 @@ export class KeycloakClient implements KeycloakClientInterface {
   async validateToken(token: string): Promise<boolean> {
     const method = "validateToken";
     this.log("debug", `${method} - Start`, method);
-    
+
     try {
       const introspectUrl = `${this.config.baseUrl}/realms/${this.config.realm}/protocol/openid-connect/token/introspect`;
 
@@ -284,8 +291,7 @@ export class KeycloakClient implements KeycloakClientInterface {
     } catch (error: unknown) {
       const { statusCode, details, keycloakError } = extractErrorInfo(error);
       this.log("error", `${method} - Failed`, method, { statusCode, keycloakError });
-      
-      // wrap introspection errors for callers
+
       throw new KeycloakError("Token introspection failed", {
         statusCode,
         details,
@@ -297,12 +303,12 @@ export class KeycloakClient implements KeycloakClientInterface {
   async getUserInfo(token: string): Promise<Record<string, unknown>> {
     const method = "getUserInfo";
     this.log("debug", `${method} - Start`, method);
-    
+
     const userInfoUrl = `${this.config.baseUrl}/realms/${this.config.realm}/protocol/openid-connect/userinfo`;
     try {
       const response = await this.httpProvider.get<Record<string, unknown>>({
         url: userInfoUrl,
-        config: { 
+        config: {
           headers: { Authorization: `Bearer ${token}` },
           logContext: { className: "KeycloakClient", methodName: method },
         },
@@ -313,7 +319,7 @@ export class KeycloakClient implements KeycloakClientInterface {
     } catch (err: unknown) {
       const { statusCode, details, keycloakError } = extractErrorInfo(err);
       this.log("error", `${method} - Failed`, method, { statusCode, keycloakError });
-      
+
       throw new KeycloakError("Failed to retrieve userinfo", {
         statusCode,
         details,
@@ -322,15 +328,8 @@ export class KeycloakClient implements KeycloakClientInterface {
     }
   }
 
-  clearTokenCache(): void {
-    this.tokenCache = null;
-  }
-
-  private static maskToken(token: string, visibleChars = 8): string {
-    if (!token || typeof token !== "string") return "";
-    return token.length <= visibleChars
-      ? token
-      : `${token.slice(0, visibleChars)}...`;
+  async clearTokenCache(): Promise<void> {
+    await this.cacheProvider.del(TOKEN_CACHE_KEY);
   }
 
   private static scopesToString(scopes?: string | string[]): string {

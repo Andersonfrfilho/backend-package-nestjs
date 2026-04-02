@@ -1,6 +1,13 @@
 import { Inject, Injectable, Optional } from '@nestjs/common';
+import { getContext, LOGGER_PROVIDER, LoggerProviderInterface } from '@adatechnology/logger';
+
 import { CacheProviderInterface } from '../cache.interface';
-import { LOGGER_PROVIDER, LoggerProviderInterface } from '@adatechnology/logger';
+import { CACHE_ENCRYPTION_SECRET } from '../cache.token';
+import { decrypt, encrypt } from '../crypto.utils';
+
+const LIB = '@adatechnology/cache';
+const LIB_VERSION = '0.0.6';
+const CONTEXT = 'InMemoryCacheProvider';
 
 @Injectable()
 export class InMemoryCacheProvider implements CacheProviderInterface {
@@ -8,39 +15,139 @@ export class InMemoryCacheProvider implements CacheProviderInterface {
 
   constructor(
     @Optional() @Inject(LOGGER_PROVIDER) private readonly logger?: LoggerProviderInterface,
+    @Optional() @Inject(CACHE_ENCRYPTION_SECRET) private readonly encryptionSecret?: string | null,
   ) {}
 
+  private callerLogContext(): Record<string, unknown> | undefined {
+    const ctx = getContext() as Record<string, unknown> | undefined;
+    return ctx?.logContext as Record<string, unknown> | undefined;
+  }
+
   async get<T>(key: string): Promise<T | null> {
-    this.logger?.debug?.({ message: `get - Key: ${key}` });
+    const libMethod = `${CONTEXT}.get`;
     const entry = this.cache.get(key);
+
     if (!entry) {
-      this.logger?.debug?.({ message: `[InMemoryCacheProvider] get - Miss: ${key}` });
+      this.logger?.debug?.({
+        message: `Cache miss: ${key}`,
+        context: CONTEXT,
+        meta: { key, hit: false, lib: LIB, libVersion: LIB_VERSION, libMethod, logContext: this.callerLogContext() },
+      });
       return null;
     }
 
     if (entry.expiry && Date.now() > entry.expiry) {
-      this.logger?.debug?.({ message: `[InMemoryCacheProvider] get - Expired: ${key}` });
+      this.logger?.debug?.({
+        message: `Cache expired: ${key}`,
+        context: CONTEXT,
+        meta: { key, hit: false, expired: true, lib: LIB, libVersion: LIB_VERSION, libMethod, logContext: this.callerLogContext() },
+      });
       this.cache.delete(key);
       return null;
     }
 
-    this.logger?.debug?.({ message: `[InMemoryCacheProvider] get - Hit: ${key}` });
+    this.logger?.debug?.({
+      message: `Cache hit: ${key}`,
+      context: CONTEXT,
+      meta: { key, hit: true, lib: LIB, libVersion: LIB_VERSION, libMethod, logContext: this.callerLogContext() },
+    });
     return entry.value as T;
   }
 
   async set<T>(key: string, value: T, ttlInSeconds?: number): Promise<void> {
-    this.logger?.debug?.({ message: `[InMemoryCacheProvider] set - Key: ${key}, TTL: ${ttlInSeconds ?? 'No TTL'}` });
+    const libMethod = `${CONTEXT}.set`;
     const expiry = ttlInSeconds ? Date.now() + ttlInSeconds * 1000 : null;
     this.cache.set(key, { value, expiry });
+    this.logger?.debug?.({
+      message: `Cache set: ${key}`,
+      context: CONTEXT,
+      meta: { key, ttlInSeconds: ttlInSeconds ?? null, lib: LIB, libVersion: LIB_VERSION, libMethod, logContext: this.callerLogContext() },
+    });
   }
 
   async del(key: string): Promise<void> {
-    this.logger?.debug?.({ message: `[InMemoryCacheProvider] del - Key: ${key}` });
+    const libMethod = `${CONTEXT}.del`;
     this.cache.delete(key);
+    this.logger?.debug?.({
+      message: `Cache del: ${key}`,
+      context: CONTEXT,
+      meta: { key, lib: LIB, libVersion: LIB_VERSION, libMethod, logContext: this.callerLogContext() },
+    });
   }
 
   async clear(): Promise<void> {
-    this.logger?.info?.({ message: '[InMemoryCacheProvider] clear - Flushing all cache' });
+    const libMethod = `${CONTEXT}.clear`;
     this.cache.clear();
+    this.logger?.info?.({
+      message: 'Cache cleared (all keys)',
+      context: CONTEXT,
+      meta: { lib: LIB, libVersion: LIB_VERSION, libMethod, logContext: this.callerLogContext() },
+    });
+  }
+
+  async setEncrypted<T>(key: string, value: T, ttlInSeconds?: number, secret?: string): Promise<void> {
+    const libMethod = `${CONTEXT}.setEncrypted`;
+    const resolvedSecret = secret ?? this.encryptionSecret;
+
+    if (!resolvedSecret) {
+      throw new Error(`[${LIB}] setEncrypted: no encryption secret provided. Pass a secret or configure encryptionSecret in CacheModule.forRoot().`);
+    }
+
+    const ciphertext = encrypt(JSON.stringify(value), resolvedSecret);
+    const expiry = ttlInSeconds ? Date.now() + ttlInSeconds * 1000 : null;
+    this.cache.set(key, { value: ciphertext, expiry });
+
+    this.logger?.debug?.({
+      message: `Cache setEncrypted: ${key}`,
+      context: CONTEXT,
+      meta: { key, ttlInSeconds: ttlInSeconds ?? null, lib: LIB, libVersion: LIB_VERSION, libMethod, logContext: this.callerLogContext() },
+    });
+  }
+
+  async getEncrypted<T>(key: string, secret?: string): Promise<T | null> {
+    const libMethod = `${CONTEXT}.getEncrypted`;
+    const resolvedSecret = secret ?? this.encryptionSecret;
+
+    if (!resolvedSecret) {
+      throw new Error(`[${LIB}] getEncrypted: no encryption secret provided. Pass a secret or configure encryptionSecret in CacheModule.forRoot().`);
+    }
+
+    const entry = this.cache.get(key);
+
+    if (!entry) {
+      this.logger?.debug?.({
+        message: `Cache miss (encrypted): ${key}`,
+        context: CONTEXT,
+        meta: { key, hit: false, lib: LIB, libVersion: LIB_VERSION, libMethod, logContext: this.callerLogContext() },
+      });
+      return null;
+    }
+
+    if (entry.expiry && Date.now() > entry.expiry) {
+      this.logger?.debug?.({
+        message: `Cache expired (encrypted): ${key}`,
+        context: CONTEXT,
+        meta: { key, hit: false, expired: true, lib: LIB, libVersion: LIB_VERSION, libMethod, logContext: this.callerLogContext() },
+      });
+      this.cache.delete(key);
+      return null;
+    }
+
+    try {
+      const plaintext = decrypt(entry.value as string, resolvedSecret);
+      this.logger?.debug?.({
+        message: `Cache hit (encrypted): ${key}`,
+        context: CONTEXT,
+        meta: { key, hit: true, lib: LIB, libVersion: LIB_VERSION, libMethod, logContext: this.callerLogContext() },
+      });
+      return JSON.parse(plaintext) as T;
+    } catch {
+      this.logger?.warn?.({
+        message: `Cache decryption failed: ${key}`,
+        context: CONTEXT,
+        meta: { key, lib: LIB, libVersion: LIB_VERSION, libMethod, logContext: this.callerLogContext() },
+      });
+      return null;
+    }
   }
 }
