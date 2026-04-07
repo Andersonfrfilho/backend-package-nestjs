@@ -1,4 +1,5 @@
 export { KeycloakModule } from "./keycloak.module";
+export { BearerTokenGuard } from "./bearer-token.guard";
 export {
   KEYCLOAK_CONFIG,
   KEYCLOAK_CLIENT,

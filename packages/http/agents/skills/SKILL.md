@@ -23,6 +23,8 @@ export class MyService {
 - **Provider Token**: Always use `HTTP_PROVIDER` (or equivalent constant) for injection.
 - **Request Context**: Every request should propagate the `X-Request-ID` via `HttpRequestContextService`.
 - **Interceptors**: Axios interceptors must be registered in the module init or dynamically via the provider.
+- **Lib metadata centralizado**: Use `LIB_NAME` e `LIB_VERSION` a partir de `src/http.constants.ts` (sem hardcode de versão/nome em providers).
+- **Structured logs**: Sempre incluir `lib`, `libVersion`, `context`, `libMethod` e `meta` quando registrar logs.
 
 ## 🧪 Testing Strategy
 Always mock Axios to avoid real network calls:

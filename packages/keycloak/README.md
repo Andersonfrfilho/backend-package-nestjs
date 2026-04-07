@@ -10,7 +10,8 @@ e um interceptor opcional. O módulo foi projetado para ser usado junto ao `@ada
 - `KeycloakModule` — módulo principal. Suporta `KeycloakModule.forRoot(config?)`.
 - `KEYCLOAK_CLIENT` — provider token para injetar o cliente Keycloak (`@Inject(KEYCLOAK_CLIENT)`).
 - `KEYCLOAK_HTTP_INTERCEPTOR` — provider token para injetar o interceptor (opcional).
-- `Roles` / `RolesGuard` — decorator e guard para autorização baseada em roles.
+- `BearerTokenGuard` — guard que valida o token Bearer via introspecção no Keycloak (401 em falha).
+- `Roles` / `RolesGuard` — decorator e guard para autorização baseada em roles (403 em falha).
 - `KeycloakError` — classe de erro tipada com `statusCode` e `details`.
 
 ### Instalação
@@ -127,6 +128,35 @@ Resultado no log:
 [MyController.getToken][KeycloakClient.getAccessToken] → cache miss → request token
 [MyController.getToken][InMemoryCacheProvider.set] → token cached
 ```
+
+### BearerTokenGuard — autenticação B2B via introspecção
+
+Valida que o header `Authorization: Bearer <token>` contém um token ativo chamando
+`POST /token/introspect` no Keycloak. Use sempre em conjunto com `RolesGuard` em rotas B2B.
+
+```ts
+import { Controller, Headers, Post, UseGuards } from "@nestjs/common";
+import { BearerTokenGuard, Roles, RolesGuard } from "@adatechnology/auth-keycloak";
+
+@Controller("orders")
+export class OrdersController {
+  @Post()
+  @Roles("manage-requests")
+  @UseGuards(BearerTokenGuard, RolesGuard)
+  create(@Headers("x-user-id") keycloakId: string) {}
+}
+```
+
+**Por que dois guards em sequência?**
+
+| Guard | Mecanismo | HTTP? | Falha |
+|---|---|---|---|
+| `BearerTokenGuard` | `POST /token/introspect` ao Keycloak | Sim | 401 — token inativo/expirado/forjado |
+| `RolesGuard` | Decode local do payload JWT | Não | 403 — permissão insuficiente |
+
+O `RolesGuard` sozinho **não é seguro** para autenticação: ele apenas decodifica o payload JWT
+sem verificar a assinatura, o que significa que um token forjado passaria. O `BearerTokenGuard`
+é quem garante autenticidade via introspecção.
 
 ### Autorização com @Roles
 

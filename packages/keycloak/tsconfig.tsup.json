@@ -2,6 +2,7 @@
   "extends": "./tsconfig.json",
   "compilerOptions": {
     "composite": false,
+    "resolveJsonModule": true,
     "baseUrl": ".",
     "paths": {
       "#shared": ["../shared/src"],

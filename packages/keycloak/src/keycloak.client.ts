@@ -12,10 +12,7 @@ import type {
   KeycloakTokenResponse,
 } from "./keycloak.interface";
 import { KeycloakError } from "./errors/keycloak-error";
-
-const LIB_NAME = "@adatechnology/auth-keycloak";
-const LIB_VERSION = "0.0.7";
-const TOKEN_CACHE_KEY = "keycloak:access_token";
+import { LIB_NAME, LIB_VERSION, LOG_CONTEXT, TOKEN_CACHE_KEY } from "./keycloak.constants";
 
 function extractErrorInfo(err: any) {
   const statusCode = err?.status ?? err?.response?.status;
@@ -78,7 +75,7 @@ export class KeycloakClient implements KeycloakClientInterface {
 
     const payload = {
       message,
-      context: "KeycloakClient",
+      context: LOG_CONTEXT.KEYCLOAK_CLIENT,
       lib: LIB_NAME,
       libVersion: LIB_VERSION,
       libMethod,
@@ -154,7 +151,7 @@ export class KeycloakClient implements KeycloakClientInterface {
         data: body,
         config: {
           headers: { "Content-Type": "application/x-www-form-urlencoded" },
-          logContext: { className: "KeycloakClient", methodName: method },
+          logContext: { className: LOG_CONTEXT.KEYCLOAK_CLIENT, methodName: method },
         },
       });
 
@@ -202,7 +199,7 @@ export class KeycloakClient implements KeycloakClientInterface {
         data,
         config: {
           headers: { "Content-Type": "application/x-www-form-urlencoded" },
-          logContext: { className: "KeycloakClient", methodName: method },
+          logContext: { className: LOG_CONTEXT.KEYCLOAK_CLIENT, methodName: method },
         },
       });
       this.log("debug", `${method} - Success`, method);
@@ -239,7 +236,7 @@ export class KeycloakClient implements KeycloakClientInterface {
         data,
         config: {
           headers: { "Content-Type": "application/x-www-form-urlencoded" },
-          logContext: { className: "KeycloakClient", methodName: method },
+          logContext: { className: LOG_CONTEXT.KEYCLOAK_CLIENT, methodName: method },
         },
       });
 
@@ -281,7 +278,7 @@ export class KeycloakClient implements KeycloakClientInterface {
         data,
         config: {
           headers: { "Content-Type": "application/x-www-form-urlencoded" },
-          logContext: { className: "KeycloakClient", methodName: method },
+          logContext: { className: LOG_CONTEXT.KEYCLOAK_CLIENT, methodName: method },
         },
       });
 
@@ -310,7 +307,7 @@ export class KeycloakClient implements KeycloakClientInterface {
         url: userInfoUrl,
         config: {
           headers: { Authorization: `Bearer ${token}` },
-          logContext: { className: "KeycloakClient", methodName: method },
+          logContext: { className: LOG_CONTEXT.KEYCLOAK_CLIENT, methodName: method },
         },
       });
 

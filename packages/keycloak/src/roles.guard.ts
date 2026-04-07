@@ -11,6 +11,7 @@ import { KEYCLOAK_CONFIG } from "./keycloak.token";
 import type { KeycloakConfig } from "./keycloak.interface";
 import type { KeycloakJwtPayload } from "./keycloak.interface";
 import { BaseAppError } from "@adatechnology/shared";
+import { HTTP_STATUS, ROLES_ERROR_CODE } from "./keycloak.constants";
 
 @Injectable()
 export class RolesGuard implements CanActivate {
@@ -38,8 +39,8 @@ export class RolesGuard implements CanActivate {
     if (!token)
       throw new BaseAppError({
         message: "Authorization token not provided",
-        status: 403,
-        code: "FORBIDDEN_MISSING_TOKEN",
+        status: HTTP_STATUS.FORBIDDEN,
+        code: ROLES_ERROR_CODE.MISSING_TOKEN,
         context: {},
       });
 
@@ -84,8 +85,8 @@ export class RolesGuard implements CanActivate {
     if (!result)
       throw new BaseAppError({
         message: "Insufficient roles",
-        status: 403,
-        code: "FORBIDDEN_INSUFFICIENT_ROLES",
+        status: HTTP_STATUS.FORBIDDEN,
+        code: ROLES_ERROR_CODE.INSUFFICIENT_ROLES,
         context: { required: required },
       });
 

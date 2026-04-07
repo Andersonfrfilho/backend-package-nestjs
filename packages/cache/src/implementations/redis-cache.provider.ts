@@ -3,11 +3,10 @@ import { getContext, LoggerProviderInterface } from '@adatechnology/logger';
 import Redis, { RedisOptions } from 'ioredis';
 
 import { CacheProviderInterface } from '../cache.interface';
+import { LIB_NAME, LIB_VERSION, LOG_CONTEXT } from '../cache.constants';
 import { decrypt, encrypt } from '../crypto.utils';
 
-const LIB = '@adatechnology/cache';
-const LIB_VERSION = '0.0.6';
-const CONTEXT = 'RedisCacheProvider';
+const CONTEXT = LOG_CONTEXT.REDIS_CACHE_PROVIDER;
 
 @Injectable()
 export class RedisCacheProvider implements CacheProviderInterface, OnModuleDestroy {
@@ -34,7 +33,7 @@ export class RedisCacheProvider implements CacheProviderInterface, OnModuleDestr
       this.logger?.debug?.({
         message: `Cache miss: ${key}`,
         context: CONTEXT,
-        meta: { key, hit: false, lib: LIB, libVersion: LIB_VERSION, libMethod, logContext: this.callerLogContext() },
+        meta: { key, hit: false, lib: LIB_NAME, libVersion: LIB_VERSION, libMethod, logContext: this.callerLogContext() },
       });
       return null;
     }
@@ -42,7 +41,7 @@ export class RedisCacheProvider implements CacheProviderInterface, OnModuleDestr
     this.logger?.debug?.({
       message: `Cache hit: ${key}`,
       context: CONTEXT,
-      meta: { key, hit: true, lib: LIB, libVersion: LIB_VERSION, libMethod, logContext: this.callerLogContext() },
+      meta: { key, hit: true, lib: LIB_NAME, libVersion: LIB_VERSION, libMethod, logContext: this.callerLogContext() },
     });
     return JSON.parse(value) as T;
   }
@@ -60,7 +59,7 @@ export class RedisCacheProvider implements CacheProviderInterface, OnModuleDestr
     this.logger?.debug?.({
       message: `Cache set: ${key}`,
       context: CONTEXT,
-      meta: { key, ttlInSeconds: ttlInSeconds ?? null, lib: LIB, libVersion: LIB_VERSION, libMethod, logContext: this.callerLogContext() },
+      meta: { key, ttlInSeconds: ttlInSeconds ?? null, lib: LIB_NAME, libVersion: LIB_VERSION, libMethod, logContext: this.callerLogContext() },
     });
   }
 
@@ -70,7 +69,7 @@ export class RedisCacheProvider implements CacheProviderInterface, OnModuleDestr
     this.logger?.debug?.({
       message: `Cache del: ${key}`,
       context: CONTEXT,
-      meta: { key, lib: LIB, libVersion: LIB_VERSION, libMethod, logContext: this.callerLogContext() },
+      meta: { key, lib: LIB_NAME, libVersion: LIB_VERSION, libMethod, logContext: this.callerLogContext() },
     });
   }
 
@@ -80,7 +79,7 @@ export class RedisCacheProvider implements CacheProviderInterface, OnModuleDestr
     this.logger?.info?.({
       message: 'Cache cleared (flushall)',
       context: CONTEXT,
-      meta: { lib: LIB, libVersion: LIB_VERSION, libMethod, logContext: this.callerLogContext() },
+      meta: { lib: LIB_NAME, libVersion: LIB_VERSION, libMethod, logContext: this.callerLogContext() },
     });
   }
 
@@ -89,7 +88,7 @@ export class RedisCacheProvider implements CacheProviderInterface, OnModuleDestr
     const resolvedSecret = secret ?? this.encryptionSecret;
 
     if (!resolvedSecret) {
-      throw new Error(`[${LIB}] setEncrypted: no encryption secret provided. Pass a secret or set encryptionSecret in the constructor.`);
+      throw new Error(`[${LIB_NAME}] setEncrypted: no encryption secret provided. Pass a secret or set encryptionSecret in the constructor.`);
     }
 
     const ciphertext = encrypt(JSON.stringify(value), resolvedSecret);
@@ -103,7 +102,7 @@ export class RedisCacheProvider implements CacheProviderInterface, OnModuleDestr
     this.logger?.debug?.({
       message: `Cache setEncrypted: ${key}`,
       context: CONTEXT,
-      meta: { key, ttlInSeconds: ttlInSeconds ?? null, lib: LIB, libVersion: LIB_VERSION, libMethod, logContext: this.callerLogContext() },
+      meta: { key, ttlInSeconds: ttlInSeconds ?? null, lib: LIB_NAME, libVersion: LIB_VERSION, libMethod, logContext: this.callerLogContext() },
     });
   }
 
@@ -112,7 +111,7 @@ export class RedisCacheProvider implements CacheProviderInterface, OnModuleDestr
     const resolvedSecret = secret ?? this.encryptionSecret;
 
     if (!resolvedSecret) {
-      throw new Error(`[${LIB}] getEncrypted: no encryption secret provided. Pass a secret or set encryptionSecret in the constructor.`);
+      throw new Error(`[${LIB_NAME}] getEncrypted: no encryption secret provided. Pass a secret or set encryptionSecret in the constructor.`);
     }
 
     const ciphertext = await this.redis.get(key);
@@ -121,7 +120,7 @@ export class RedisCacheProvider implements CacheProviderInterface, OnModuleDestr
       this.logger?.debug?.({
         message: `Cache miss (encrypted): ${key}`,
         context: CONTEXT,
-        meta: { key, hit: false, lib: LIB, libVersion: LIB_VERSION, libMethod, logContext: this.callerLogContext() },
+        meta: { key, hit: false, lib: LIB_NAME, libVersion: LIB_VERSION, libMethod, logContext: this.callerLogContext() },
       });
       return null;
     }
@@ -131,14 +130,14 @@ export class RedisCacheProvider implements CacheProviderInterface, OnModuleDestr
       this.logger?.debug?.({
         message: `Cache hit (encrypted): ${key}`,
         context: CONTEXT,
-        meta: { key, hit: true, lib: LIB, libVersion: LIB_VERSION, libMethod, logContext: this.callerLogContext() },
+        meta: { key, hit: true, lib: LIB_NAME, libVersion: LIB_VERSION, libMethod, logContext: this.callerLogContext() },
       });
       return JSON.parse(plaintext) as T;
     } catch {
       this.logger?.warn?.({
         message: `Cache decryption failed: ${key}`,
         context: CONTEXT,
-        meta: { key, lib: LIB, libVersion: LIB_VERSION, libMethod, logContext: this.callerLogContext() },
+        meta: { key, lib: LIB_NAME, libVersion: LIB_VERSION, libMethod, logContext: this.callerLogContext() },
       });
       return null;
     }

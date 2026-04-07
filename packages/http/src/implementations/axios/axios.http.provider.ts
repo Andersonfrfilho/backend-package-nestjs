@@ -36,19 +36,24 @@ import {
   SetAuthTokenParams,
 } from "./types/axios.http.params";
 import {
-  HTTP_CLIENT_LABEL,
   HEADERS_PARAMS,
   ANSI_COLORS,
   LOG_TYPES,
   AUTH_SCHEME,
   DEFAULTS,
 } from "./axios.http.constants";
+import { LIB_NAME, LIB_VERSION } from "../../http.constants";
 
 /** constants, interfaces and types are moved to dedicated files */
 
 import { Inject, Injectable, Optional } from "@nestjs/common";
 import { CACHE_PROVIDER, CacheProviderInterface } from "@adatechnology/cache";
-import { getContext, LOGGER_PROVIDER, LoggerProviderInterface, runWithContext } from "@adatechnology/logger";
+import {
+  getContext,
+  LOGGER_PROVIDER,
+  LoggerProviderInterface,
+  runWithContext,
+} from "@adatechnology/logger";
 
 /**
  * Axios-based implementation of the HTTP provider interface.
@@ -69,8 +74,12 @@ export class AxiosHttpProvider implements AxiosHttpProviderInterface {
   constructor(
     @Optional() axiosInstance?: AxiosInstance,
     @Optional() options?: AxiosHttpProviderOptions,
-    @Optional() @Inject(CACHE_PROVIDER) private readonly cacheProvider?: CacheProviderInterface,
-    @Optional() @Inject(LOGGER_PROVIDER) private readonly logger?: LoggerProviderInterface,
+    @Optional()
+    @Inject(CACHE_PROVIDER)
+    private readonly cacheProvider?: CacheProviderInterface,
+    @Optional()
+    @Inject(LOGGER_PROVIDER)
+    private readonly logger?: LoggerProviderInterface,
   ) {
     this.axiosInstance = axiosInstance || axios.create();
     this.loggingConfig = options?.logging;
@@ -93,30 +102,40 @@ export class AxiosHttpProvider implements AxiosHttpProviderInterface {
         if (this.shouldLogType(LOG_TYPES.REQUEST)) {
           const logContext = this.extractLogContext(config);
           const method = (config.method || HttpMethod.GET).toLowerCase();
-          
-          this.emitLog(LOG_TYPES.REQUEST, {
-            method: method.toUpperCase(),
-            url: this.resolveRequestUrl(config),
-            source: this.buildSource(logContext),
-            requestId: logContext.requestId,
-            headers: this.loggingConfig?.includeHeaders
-              ? this.sanitizeHeaders(config.headers as Record<string, unknown>)
-              : undefined,
-            data: this.loggingConfig?.includeBody
-              ? this.sanitizeBody(config.data)
-              : undefined,
-          }, method);
+
+          this.emitLog(
+            LOG_TYPES.REQUEST,
+            {
+              method: method.toUpperCase(),
+              url: this.resolveRequestUrl(config),
+              source: this.buildSource(logContext),
+              requestId: logContext.requestId,
+              headers: this.loggingConfig?.includeHeaders
+                ? this.sanitizeHeaders(
+                    config.headers as Record<string, unknown>,
+                  )
+                : undefined,
+              data: this.loggingConfig?.includeBody
+                ? this.sanitizeBody(config.data)
+                : undefined,
+            },
+            method,
+          );
         }
 
         return config;
       },
       (error: AxiosError) => {
         if (this.shouldLogType(LOG_TYPES.ERROR)) {
-          this.emitLog(LOG_TYPES.ERROR, {
-            phase: "request",
-            message: String(error.message),
-            url: this.resolveRequestUrl(error.config),
-          }, "request");
+          this.emitLog(
+            LOG_TYPES.ERROR,
+            {
+              phase: "request",
+              message: String(error.message),
+              url: this.resolveRequestUrl(error.config),
+            },
+            "request",
+          );
         }
 
         return Promise.reject(error);
@@ -131,24 +150,30 @@ export class AxiosHttpProvider implements AxiosHttpProviderInterface {
             response.config as unknown as Record<string, unknown>
           ).__httpStartedAt as number | undefined;
           const durationMs = startedAt ? Date.now() - startedAt : undefined;
-          const method = String((response.config as any)?.method || HttpMethod.GET).toLowerCase();
+          const method = String(
+            (response.config as any)?.method || HttpMethod.GET,
+          ).toLowerCase();
 
-          this.emitLog(LOG_TYPES.RESPONSE, {
-            method: method.toUpperCase(),
-            url: this.resolveRequestUrl(response.config),
-            source: this.buildSource(logContext),
-            requestId: logContext.requestId,
-            status: response.status,
-            durationMs,
-            headers: this.loggingConfig?.includeHeaders
-              ? this.sanitizeHeaders(
-                  response.headers as Record<string, unknown>,
-                )
-              : undefined,
-            data: this.loggingConfig?.includeBody
-              ? this.sanitizeBody(response.data)
-              : undefined,
-          }, method);
+          this.emitLog(
+            LOG_TYPES.RESPONSE,
+            {
+              method: method.toUpperCase(),
+              url: this.resolveRequestUrl(response.config),
+              source: this.buildSource(logContext),
+              requestId: logContext.requestId,
+              status: response.status,
+              durationMs,
+              headers: this.loggingConfig?.includeHeaders
+                ? this.sanitizeHeaders(
+                    response.headers as Record<string, unknown>,
+                  )
+                : undefined,
+              data: this.loggingConfig?.includeBody
+                ? this.sanitizeBody(response.data)
+                : undefined,
+            },
+            method,
+          );
         }
 
         return response;
@@ -160,21 +185,27 @@ export class AxiosHttpProvider implements AxiosHttpProviderInterface {
           const startedAt = (cfg as Record<string, unknown>)
             ?.__httpStartedAt as number | undefined;
           const durationMs = startedAt ? Date.now() - startedAt : undefined;
-          const method = String((cfg as any)?.method || HttpMethod.GET).toLowerCase();
+          const method = String(
+            (cfg as any)?.method || HttpMethod.GET,
+          ).toLowerCase();
 
-          this.emitLog(LOG_TYPES.ERROR, {
-            phase: "response",
-            method: method.toUpperCase(),
-            url: this.resolveRequestUrl(cfg),
-            source: this.buildSource(logContext),
-            requestId: logContext.requestId,
-            status: error.response?.status,
-            durationMs,
-            message: String(error.message),
-            responseData: this.loggingConfig?.includeBody
-              ? this.sanitizeBody(error.response?.data)
-              : undefined,
-          }, method);
+          this.emitLog(
+            LOG_TYPES.ERROR,
+            {
+              phase: "response",
+              method: method.toUpperCase(),
+              url: this.resolveRequestUrl(cfg),
+              source: this.buildSource(logContext),
+              requestId: logContext.requestId,
+              status: error.response?.status,
+              durationMs,
+              message: String(error.message),
+              responseData: this.loggingConfig?.includeBody
+                ? this.sanitizeBody(error.response?.data)
+                : undefined,
+            },
+            method,
+          );
         }
 
         return Promise.reject(error);
@@ -209,7 +240,11 @@ export class AxiosHttpProvider implements AxiosHttpProviderInterface {
     return types.includes(type);
   }
 
-  private emitLog(type: HttpLogType, meta?: Record<string, unknown>, libMethod?: string): void {
+  private emitLog(
+    type: HttpLogType,
+    meta?: Record<string, unknown>,
+    libMethod?: string,
+  ): void {
     const context = this.loggingConfig?.context || "HttpClient";
     const method = meta?.method ? `[${meta.method}]` : "";
     const url = meta?.url ? `${meta.url}` : "";
@@ -233,8 +268,8 @@ export class AxiosHttpProvider implements AxiosHttpProviderInterface {
         context,
         meta: normalizedMeta,
         source: meta?.source,
-        lib: "@adatechnology/http-client",
-        libVersion: "0.0.2",
+        lib: LIB_NAME,
+        libVersion: LIB_VERSION,
         libMethod,
       } as any;
 
@@ -395,7 +430,9 @@ export class AxiosHttpProvider implements AxiosHttpProviderInterface {
     const decoratorContext = getHttpRequestContext();
     // Fallback: logContext stored in logger AsyncLocalStorage (set by caller via runWithContext)
     const asyncCtx = getContext() as Record<string, unknown> | undefined;
-    const asyncLogContext = asyncCtx?.logContext as HttpRequestLogContext | undefined;
+    const asyncLogContext = asyncCtx?.logContext as
+      | HttpRequestLogContext
+      | undefined;
 
     const requestIdHeaderName = this.getRequestIdHeaderName();
     const requestIdFromHeader = this.getHeaderValue({
@@ -419,8 +456,14 @@ export class AxiosHttpProvider implements AxiosHttpProviderInterface {
     }
 
     return {
-      className: requestLogContext.className || decoratorContext?.className || asyncLogContext?.className,
-      methodName: requestLogContext.methodName || decoratorContext?.methodName || asyncLogContext?.methodName,
+      className:
+        requestLogContext.className ||
+        decoratorContext?.className ||
+        asyncLogContext?.className,
+      methodName:
+        requestLogContext.methodName ||
+        decoratorContext?.methodName ||
+        asyncLogContext?.methodName,
       requestId: resolvedRequestId,
     };
   }
@@ -964,7 +1007,10 @@ export class AxiosHttpProvider implements AxiosHttpProviderInterface {
       try {
         processedError = await interceptor(processedError);
       } catch (interceptorError) {
-        this.logger?.warn?.({ message: "Error interceptor failed", meta: { error: interceptorError } });
+        this.logger?.warn?.({
+          message: "Error interceptor failed",
+          meta: { error: interceptorError },
+        });
       }
     }
 

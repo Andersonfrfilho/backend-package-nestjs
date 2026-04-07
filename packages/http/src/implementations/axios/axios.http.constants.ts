@@ -1,4 +1,6 @@
-export const HTTP_CLIENT_LABEL = "@adatechnology/http-client@0.0.2";
+import { LIB_NAME, LIB_VERSION } from "../../http.constants";
+
+export const HTTP_CLIENT_LABEL = `${LIB_NAME}@${LIB_VERSION}`;
 
 export const HEADERS_PARAMS = {
   REQUEST_ID: "x-request-id",

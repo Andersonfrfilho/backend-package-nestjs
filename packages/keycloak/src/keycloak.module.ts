@@ -8,6 +8,7 @@ import { CACHE_PROVIDER } from "@adatechnology/cache";
 import type { CacheProviderInterface } from "@adatechnology/cache";
 import type { AxiosRequestConfig, AxiosInstance } from "axios";
 
+import { BearerTokenGuard } from "./bearer-token.guard";
 import { KeycloakClient } from "./keycloak.client";
 import { KeycloakHttpInterceptor } from "./keycloak.http.interceptor";
 import { RolesGuard } from "./roles.guard";
@@ -68,6 +69,7 @@ export class KeycloakModule {
           useFactory: () => new KeycloakHttpInterceptor(),
         },
         RolesGuard,
+        BearerTokenGuard,
       ],
       exports: [
         Reflector,
@@ -76,6 +78,7 @@ export class KeycloakModule {
         KEYCLOAK_HTTP_INTERCEPTOR,
         KEYCLOAK_CONFIG,
         RolesGuard,
+        BearerTokenGuard,
       ],
     };
   }

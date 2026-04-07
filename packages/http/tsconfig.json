@@ -4,18 +4,19 @@
     "module": "CommonJS",
     "moduleResolution": "node",
     "outDir": "dist",
-    "rootDir": "src",
+    "rootDir": ".",
     "declarationDir": "dist",
     "declaration": true,
-    "composite": true
-    ,
+    "composite": true,
+    "resolveJsonModule": true,
     "paths": {
       "@adatechnology/logger": ["../logger/dist", "../logger/dist"],
       "@adatechnology/logger/*": ["../logger/dist/*", "../logger/dist/*"]
     }
   },
   "include": [
-    "./src/**/*.ts"
+    "./src/**/*.ts",
+    "./package.json"
   ],
   "exclude": ["node_modules", "dist"],
   "references": [

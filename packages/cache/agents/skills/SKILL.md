@@ -28,6 +28,8 @@ export class MyService {
 - **Provider Injection**: Always use `CACHE_PROVIDER` token.
 - **Async First**: All methods are async to allow seamless migration to Redis/distributed caches.
 - **Private Data**: Cache keys should be scoped (e.g., `http:GET:/users/1`).
+- **Lib metadata centralizado**: Use `LIB_NAME` e `LIB_VERSION` a partir de `src/cache.constants.ts` (evite hardcode).
+- **Structured logs**: Em providers, manter `context`, `lib`, `libVersion`, `libMethod` e `meta` padronizados.
 
 ## 🛠️ Redis Implementation
 To use Redis, implement a new provider in your app that fulfills `CacheProviderInterface` and inject it into the module.
