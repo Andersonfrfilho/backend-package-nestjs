@@ -2,6 +2,15 @@
 
 This document explains how to run a local dry-run publish and how the CI publish works.
 
+## Pacote interno `@adatechnology/shared`
+
+O pacote `@adatechnology/shared` é **somente interno** (não publicável no npm).
+Ele centraliza código comum entre libs, e os pacotes publicáveis fazem bundle do que precisam no `dist` via `tsup`.
+
+- Status: `private: true`
+- Changesets: ignorado em `.changeset/config.json`
+- Fluxo de build/publish: não deve ser tratado como pacote de release
+
 ## Local manual publish (dry-run)
 
 Warning: do not commit tokens. Keep them in env variables or use `~/.npmrc` temporarily.

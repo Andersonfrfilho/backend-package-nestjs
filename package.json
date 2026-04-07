@@ -1,6 +1,7 @@
 {
   "name": "backend-monorepo",
   "private": true,
+  "packageManager": "pnpm@9.0.0",
   "version": "0.0.0",
   "description": "Monorepo for backend shared packages",
   "main": "dist/index.js",
@@ -14,9 +15,9 @@
   ],
   "scripts": {
     "bootstrap": "pnpm install",
-    "build": "turbo run build",
-    "build:packages": "turbo run build --scope packages/**",
-    "build:libs-ordered": "pnpm --filter @adatechnology/shared run build && pnpm --filter @adatechnology/logger run build && pnpm --filter @adatechnology/cache run build && pnpm --filter @adatechnology/http-client run build && pnpm --filter @adatechnology/auth-keycloak run build",
+    "build": "pnpm run build:libs-ordered",
+    "build:packages": "pnpm run build:libs-ordered",
+    "build:libs-ordered": "pnpm --filter @adatechnology/logger run build && pnpm --filter @adatechnology/cache run build && pnpm --filter @adatechnology/http-client run build && pnpm --filter @adatechnology/auth-keycloak run build",
     "build:all": "pnpm run build:libs-ordered && pnpm --filter example build || true",
     "dev": "turbo run dev --parallel",
     "clean": "rm -rf dist packages/**/dist",
