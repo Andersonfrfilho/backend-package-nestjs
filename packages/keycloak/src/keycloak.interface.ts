@@ -40,6 +40,42 @@ export interface KeycloakConfig {
    * determine how long to cache the access token instead of deriving TTL from the token's expires_in.
    */
   tokenCacheTtl?: number;
+  /**
+   * Header names for B2C and B2B token flows.
+   * Overrides process.env values when provided.
+   *
+   * Env equivalents:
+   *   KEYCLOAK_B2C_TOKEN_HEADER (default: 'x-access-token')
+   *   KEYCLOAK_B2B_TOKEN_HEADER (default: 'authorization')
+   */
+  headers?: {
+    /** Header carrying the user JWT forwarded by Kong. */
+    b2cToken?: string;
+    /** Header carrying the service account token. */
+    b2bToken?: string;
+  };
+  /**
+   * JWT claim names used to identify users and callers.
+   * Overrides process.env values when provided.
+   *
+   * Env equivalents:
+   *   KEYCLOAK_USER_ID_CLAIM   (default: 'sub')
+   *   KEYCLOAK_CALLER_ID_CLAIM (default: 'azp')
+   */
+  claims?: {
+    /**
+     * Claim name(s) for the user identifier (from the B2C token).
+     * When an array, the first non-empty value found in the JWT is used.
+     * Env: KEYCLOAK_USER_ID_CLAIM (comma-separated). Default: 'sub'
+     */
+    userId?: string | string[];
+    /**
+     * Claim name(s) for the calling client identifier (from the B2B token).
+     * When an array, the first non-empty value found in the JWT is used.
+     * Env: KEYCLOAK_CALLER_ID_CLAIM (comma-separated). Default: 'azp'
+     */
+    callerId?: string | string[];
+  };
 }
 
 /**

@@ -1,56 +1,166 @@
 ---
 name: auth-keycloak
-description: Patterns for @adatechnology/auth-keycloak. Use for Keycloak config, guard stack B2B (BearerTokenGuard + RolesGuard), structured logging and standardized error handling.
+description: Patterns for @adatechnology/auth-keycloak. Guards (B2CGuard, B2BGuard, ApiAuthGuard, RolesGuard), decorators (@AuthUser, @CallerToken, @AccessToken), dynamic header/claim config, and Keycloak client usage.
 ---
 
-# 🔐 Auth Keycloak Standards
+# Auth Keycloak — Standards & Patterns
 
-## 🚀 Setup Example
+## Setup
+
 ```typescript
 KeycloakModule.forRoot({
-  baseUrl: 'http://localhost:9090',
+  baseUrl: 'http://localhost:8080',
   realm: 'my-realm',
   credentials: {
     clientId: 'my-client',
     clientSecret: 'secret',
     grantType: 'client_credentials',
   },
+  // Optional: override header names and JWT claim names
+  headers: {
+    b2cToken: 'x-access-token',   // default
+    b2bToken: 'authorization',    // default
+  },
+  claims: {
+    userId: ['preferred_username', 'email', 'sub'],  // string or string[]
+    callerId: ['client_id', 'azp'],
+  },
 })
 ```
 
-## 🛡️ Guard Stack B2B (padrão obrigatório)
+Alternatively configure via env (comma-separated for arrays):
+```env
+KEYCLOAK_B2C_TOKEN_HEADER=x-access-token
+KEYCLOAK_B2B_TOKEN_HEADER=authorization
+KEYCLOAK_USER_ID_CLAIM=preferred_username,email,sub
+KEYCLOAK_CALLER_ID_CLAIM=client_id,azp
+```
+
+---
+
+## Header contract (set by Kong)
+
+```
+Authorization: Bearer <service_token>   → B2B caller identity
+X-Access-Token: <user_jwt>              → B2C user context (original user JWT)
+```
+
+Kong validates the user JWT via JWKS (local, zero Keycloak calls per request).
+All claim decoding by decorators is **local** — no I/O.
+
+---
+
+## Guards
+
+| Guard | Validates | When to use |
+|---|---|---|
+| `B2CGuard` | `X-Access-Token` present | Route exclusively for users via Kong |
+| `B2BGuard` | `Authorization` via Keycloak introspection | Route exclusively for internal services |
+| `ApiAuthGuard` | Detects path and delegates | Route reachable by both paths |
+| `RolesGuard` | Roles from the correct JWT | Always paired with a guard above |
+| `BearerTokenGuard` | `Authorization` via introspection | Lower-level; prefer `B2BGuard` |
+
+**Guard order matters** — authentication guards must run before `RolesGuard`.
+
+---
+
+## Decorators
+
+### `@AuthUser(param?)`
+Extracts a claim from `X-Access-Token` (B2C token). Default claim: configured `userId` (default: `sub`).
+
+```ts
+@AuthUser()                                           // sub (default)
+@AuthUser('email')                                    // single claim
+@AuthUser(['preferred_username', 'email', 'sub'])     // first non-empty wins
+@AuthUser({ claim: 'email', header: 'x-user-jwt' }) // custom header per-route
+```
+
+### `@CallerToken(param?)`
+Extracts a claim from `Authorization` (B2B token). Default claim: configured `callerId` (default: `azp`).
+
+```ts
+@CallerToken()                                              // azp (default)
+@CallerToken('sub')                                         // single claim
+@CallerToken(['client_id', 'azp'])                          // first non-empty wins
+@CallerToken({ header: 'x-service-token', claim: 'azp' }) // custom header per-route
+```
+
+### `@AccessToken(header?)`
+Returns the raw JWT string from the B2C header. Use for non-string claims or when forwarding the token.
+
+```ts
+@AccessToken()              // from default B2C header
+@AccessToken('x-user-jwt')  // from custom header
+```
+
+### `@Roles(...)`
+Declares required roles. Always used with `RolesGuard`.
+
+```ts
+@Roles('user-manager')
+@Roles({ roles: ['admin', 'user-manager'], mode: 'any' })  // any (default)
+@Roles({ roles: ['admin', 'user-manager'], mode: 'all' })  // all
+```
+
+---
+
+## Examples
+
+### B2C — user via Kong
 ```typescript
-@Controller('orders')
-export class OrdersController {
-  @Post()
-  @Roles('manage-requests')
-  @UseGuards(BearerTokenGuard, RolesGuard)
-  create(@Headers('x-user-id') keycloakId: string) {
-    return { ok: true, keycloakId };
-  }
+@Get('me')
+@Roles('user-manager')
+@UseGuards(B2CGuard, RolesGuard)
+async getMe(
+  @AuthUser() id: string,
+  @AuthUser('email') email: string,
+  @AuthUser(['preferred_username', 'email']) name: string,
+  @AccessToken() rawToken: string,
+) {
+  return { id, email, name };
 }
 ```
 
-### Ordem e responsabilidade dos guards
-- `BearerTokenGuard` (sempre primeiro): autenticação via introspecção (`/token/introspect`) → **401** em falha.
-- `RolesGuard` (depois): autorização por roles no payload JWT → **403** em falha.
+### B2B — internal service
+```typescript
+@Post('internal/notify')
+@Roles('send-notifications')
+@UseGuards(B2BGuard, RolesGuard)
+async notify(
+  @CallerToken() caller: string,  // 'domestic-backend-bff'
+) {
+  return { caller };
+}
+```
 
-> `RolesGuard` sozinho não autentica token (apenas decodifica payload). Para rotas B2B, use sempre os dois guards em sequência.
+### Both paths (ApiAuthGuard)
+```typescript
+@Get(':id')
+@Roles('user-manager')
+@UseGuards(ApiAuthGuard, RolesGuard)
+async findById(
+  @Param('id') id: string,
+  @AuthUser() userId: string,    // empty when B2B-only
+  @CallerToken() caller: string,
+) { ... }
+```
 
-## 🏗️ Core Patterns
-- **HTTP Interceptor**: `KeycloakHttpInterceptor` automatically adds Bearer tokens to outgoing calls.
-- **Token Extraction**: Guards must extract and validate the JWT from the `Authorization` header.
-- **Constantes centralizadas**: manter metadados e códigos em `keycloak.constants.ts` (`LIB_NAME`, `LIB_VERSION`, `LOG_CONTEXT`, `HTTP_STATUS`, `*_ERROR_CODE`).
-- **Semântica de erro**:
-  - autenticação inválida/missing token/configuração ausente/introspecção falhou → 401 (`BEARER_ERROR_CODE`)
-  - papéis insuficientes → 403 (`ROLES_ERROR_CODE`)
-- **Logs estruturados**: sempre incluir `context`, `lib`, `libVersion`, `libMethod`, `requestId` e `meta` quando houver logger disponível.
-- **Ao adicionar nova feature pública**:
-  1. registrar provider no `KeycloakModule`
-  2. exportar no `src/index.ts`
-  3. cobrir com testes (happy path + cenários de falha)
-  4. atualizar README e changeset
-- **Metadados da lib por package.json**: se usar `import pkg from "../package.json"`, manter `resolveJsonModule: true` e `package.json` no `include` do `tsconfig`.
+### Custom header per-route
+```typescript
+@Get('special')
+@UseGuards(B2CGuard)
+async special(
+  @AuthUser({ header: 'x-custom-token', claim: ['sub', 'email'] }) id: string,
+) { ... }
+```
 
-## 🧪 Local Dev
-Use the `example-realm.json` in `example/keycloak-config` to bootstrap a local Keycloak instance via Docker.
+---
+
+## Core rules
+
+- **Authentication guard always before RolesGuard** — `RolesGuard` alone does not verify token signatures.
+- **Decorators are local** — no Keycloak calls. Kong already validated the JWT.
+- **B2CGuard checks presence** of `X-Access-Token`, not validity — Kong is the validator.
+- **No `X-User-Id` or `X-User-Roles` shortcuts** — all user data comes from the JWT in `X-Access-Token`.
+- **When adding a new public feature**: register in `KeycloakModule`, export in `src/index.ts`, cover with tests, update README and changeset.

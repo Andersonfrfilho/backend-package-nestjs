@@ -3,6 +3,7 @@ import { BaseAppError } from "@adatechnology/shared";
 import { B2BGuard } from "./b2b.guard";
 import { B2CGuard } from "./b2c.guard";
 import { HTTP_STATUS, BEARER_ERROR_CODE } from "./keycloak.constants";
+import { getB2CTokenHeader, getB2BTokenHeader } from "./keycloak.headers";
 
 /**
  * ApiAuthGuard — composite guard for routes that accept both paths.
@@ -39,24 +40,23 @@ export class ApiAuthGuard implements CanActivate {
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest();
 
-    const authHeader: string | undefined =
-      request.headers?.authorization ?? request.headers?.Authorization;
+    // B2C path — Kong-routed user request: B2C token header present
+    // (Kong also sets B2B Authorization, so check B2C first to avoid ambiguity)
+    const accessToken: string | undefined = request.headers?.[getB2CTokenHeader()];
 
-    // B2B path — service account token present
+    if (accessToken) {
+      return this.b2cGuard.canActivate(context);
+    }
+
+    // B2B path — direct service-to-service call: only B2B token present
+    const authHeader: string | undefined = request.headers?.[getB2BTokenHeader()];
+
     if (authHeader?.toLowerCase().startsWith("bearer ")) {
       return this.b2bGuard.canActivate(context);
     }
 
-    // B2C path — Kong-injected headers present
-    const userId: string | undefined =
-      request.headers?.["x-user-id"] ?? request.headers?.["X-User-Id"];
-
-    if (userId) {
-      return this.b2cGuard.canActivate(context);
-    }
-
     throw new BaseAppError({
-      message: "Unauthorized: missing Authorization header (B2B) or Kong identity headers (B2C)",
+      message: "Unauthorized: missing X-Access-Token (Kong/B2C) or Authorization header (B2B)",
       status: HTTP_STATUS.UNAUTHORIZED,
       code: BEARER_ERROR_CODE.MISSING_TOKEN,
       context: {},

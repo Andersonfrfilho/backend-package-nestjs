@@ -6,29 +6,34 @@ import {
   Optional,
 } from "@nestjs/common";
 import { Reflector } from "@nestjs/core";
-import { ROLES_META_KEY, RolesOptions } from "./roles.decorator";
+import {
+  ROLES_META_KEY,
+  B2C_ROLES_META_KEY,
+  B2B_ROLES_META_KEY,
+  TOKEN_ROLES_META_KEY,
+  RolesOptions,
+  TokenRolesOptions,
+} from "./roles.decorator";
 import { KEYCLOAK_CONFIG } from "./keycloak.token";
-import type { KeycloakConfig } from "./keycloak.interface";
-import type { KeycloakJwtPayload } from "./keycloak.interface";
+import type { KeycloakConfig, KeycloakJwtPayload } from "./keycloak.interface";
 import { BaseAppError } from "@adatechnology/shared";
 import { HTTP_STATUS, ROLES_ERROR_CODE } from "./keycloak.constants";
+import { getB2CTokenHeader, getB2BTokenHeader } from "./keycloak.headers";
 
 /**
- * Guard that checks whether the current request has the required roles.
+ * Guard that enforces role requirements declared by @Roles, @B2CRoles, and @B2BRoles.
  *
- * Supports two auth paths transparently:
+ * Three decorator modes:
  *
- * 1. **Kong path** (user-facing, preferred):
- *    Kong validates the token, removes Authorization, and injects:
- *    - `X-User-Id`    — keycloak sub
- *    - `X-User-Roles` — comma-separated realm roles
- *    The guard reads roles from `X-User-Roles` header.
+ * @Roles('x')      — auto-detect token source:
+ *                    X-Access-Token present → read from user JWT (B2C)
+ *                    Authorization only     → read from service JWT (B2B)
  *
- * 2. **B2B path** (service-to-service, e.g. BFF → API):
- *    The caller sends a service account JWT in the Authorization header.
- *    The guard decodes the JWT locally and reads `realm_access.roles`.
+ * @B2CRoles('x')   — always check the user JWT in X-Access-Token
+ * @B2BRoles('x')   — always check the service JWT in Authorization
  *
- * Priority: Kong header → JWT fallback.
+ * When @B2CRoles AND @B2BRoles are both declared, BOTH checks must pass.
+ * This allows expressing: "the calling service must have role X AND the user must have role Y".
  */
 @Injectable()
 export class RolesGuard implements CanActivate {
@@ -40,97 +45,130 @@ export class RolesGuard implements CanActivate {
     private readonly config?: KeycloakConfig,
   ) {}
 
-  canActivate(context: ExecutionContext): boolean | Promise<boolean> {
-    const meta =
-      this.reflector.get<RolesOptions>(ROLES_META_KEY, context.getHandler()) ||
-      this.reflector.get<RolesOptions>(ROLES_META_KEY, context.getClass());
-
-    if (!meta || !meta.roles || meta.roles.length === 0) return true;
-
+  canActivate(context: ExecutionContext): boolean {
     const req = context.switchToHttp().getRequest();
-    const required = meta.roles;
-    const availableRoles = new Set<string>();
 
-    // ── Path 1: Kong-injected header (preferred) ──────────────────────────
-    const kongRolesHeader: string | undefined =
-      req.headers?.["x-user-roles"] || req.headers?.["X-User-Roles"];
+    const b2cMeta = this.getMeta(B2C_ROLES_META_KEY, context);
+    const b2bMeta = this.getMeta(B2B_ROLES_META_KEY, context);
+    const genericMeta = this.getMeta(ROLES_META_KEY, context);
+    // getAllAndMerge concatenates arrays from multiple @TokenRoles calls
+    const tokenRules = this.reflector.getAllAndMerge<TokenRolesOptions[]>(
+      TOKEN_ROLES_META_KEY,
+      [context.getHandler(), context.getClass()],
+    ) ?? [];
 
-    if (kongRolesHeader) {
-      kongRolesHeader
-        .split(",")
-        .map((r: string) => r.trim())
-        .filter(Boolean)
-        .forEach((r: string) => availableRoles.add(r));
-    } else {
-      // ── Path 2: B2B — decode JWT from Authorization header ───────────────
-      const authHeader = req.headers?.authorization || req.headers?.Authorization;
-      const token = authHeader
-        ? String(authHeader).split(" ")[1]
-        : req.query?.token;
+    // No role requirements declared — allow
+    if (!b2cMeta && !b2bMeta && !genericMeta && tokenRules.length === 0) return true;
 
-      if (!token) {
-        throw new BaseAppError({
-          message: "Authorization token not provided",
-          status: HTTP_STATUS.FORBIDDEN,
-          code: ROLES_ERROR_CODE.MISSING_TOKEN,
-          context: {},
-        });
-      }
+    // ── Explicit B2C check (X-Access-Token) ──────────────────────────────
+    if (b2cMeta) {
+      const token: string | undefined = req.headers?.[getB2CTokenHeader()];
+      const roles = token ? this.extractRoles(token, "b2c") : new Set<string>();
+      this.assertRoles(roles, b2cMeta, "B2C (user)");
+    }
 
-      const payload = this.decodeJwtPayload(token);
+    // ── Explicit B2B check (Authorization) ───────────────────────────────
+    if (b2bMeta) {
+      const raw: string | undefined = req.headers?.[getB2BTokenHeader()];
+      const token = raw?.split(" ")[1];
+      const roles = token ? this.extractRoles(token, "b2b") : new Set<string>();
+      this.assertRoles(roles, b2bMeta, "B2B (service)");
+    }
 
-      if (payload?.realm_access?.roles && Array.isArray(payload.realm_access.roles)) {
-        payload.realm_access.roles.forEach((r: string) => availableRoles.add(r));
-      }
+    // ── Generic @Roles — auto-detect token source ─────────────────────────
+    if (genericMeta) {
+      const accessToken: string | undefined = req.headers?.[getB2CTokenHeader()];
 
-      const clientId = this.config?.credentials?.clientId;
-      if (clientId && payload?.resource_access?.[clientId]?.roles) {
-        payload.resource_access[clientId].roles!.forEach((r: string) =>
-          availableRoles.add(r),
-        );
-      }
+      if (accessToken) {
+        // B2C path — use user JWT
+        const roles = this.extractRoles(accessToken, "b2c");
+        this.assertRoles(roles, genericMeta, "B2C (user)");
+      } else {
+        // B2B path — use service JWT
+        const raw: string | undefined = req.headers?.[getB2BTokenHeader()];
+        const token = raw?.split(" ")[1] ?? (req.query?.token as string | undefined);
 
-      if (meta.type === "both" && payload?.resource_access) {
-        Object.values(payload.resource_access).forEach((entry) => {
-          if (entry?.roles && Array.isArray(entry.roles)) {
-            (entry.roles as string[]).forEach((r: string) => availableRoles.add(r));
-          }
-        });
+        if (!token) {
+          throw new BaseAppError({
+            message: "Authorization token not provided",
+            status: HTTP_STATUS.FORBIDDEN,
+            code: ROLES_ERROR_CODE.MISSING_TOKEN,
+            context: {},
+          });
+        }
+
+        const roles = this.extractRoles(token, "b2b");
+        this.assertRoles(roles, genericMeta, "B2B (service)");
       }
     }
 
-    // ── Role matching ─────────────────────────────────────────────────────
-    const hasMatch = required.map((r) => availableRoles.has(r));
-    const result =
-      meta.mode === "all" ? hasMatch.every(Boolean) : hasMatch.some(Boolean);
-
-    if (!result) {
-      throw new BaseAppError({
-        message: "Insufficient roles",
-        status: HTTP_STATUS.FORBIDDEN,
-        code: ROLES_ERROR_CODE.INSUFFICIENT_ROLES,
-        context: { required },
-      });
+    // ── Dynamic @TokenRoles — each rule checked against its own header ────
+    for (const rule of tokenRules) {
+      const raw: string | undefined = req.headers?.[rule.header];
+      const token = rule.bearer ? raw?.split(" ")[1] : raw;
+      const roles = token ? this.extractRoles(token, "b2c") : new Set<string>();
+      this.assertRoles(roles, { roles: rule.roles, mode: rule.mode ?? "any" }, `header:${rule.header}`);
     }
 
     return true;
+  }
+
+  // ── Helpers ───────────────────────────────────────────────────────────────
+
+  private getMeta(key: string, ctx: ExecutionContext): RolesOptions | undefined {
+    return (
+      this.reflector.get<RolesOptions>(key, ctx.getHandler()) ||
+      this.reflector.get<RolesOptions>(key, ctx.getClass()) ||
+      undefined
+    );
+  }
+
+  private extractRoles(token: string, source: "b2c" | "b2b"): Set<string> {
+    const payload = this.decodeJwtPayload(token);
+    const roles = new Set<string>();
+
+    // realm roles
+    if (payload?.realm_access?.roles && Array.isArray(payload.realm_access.roles)) {
+      payload.realm_access.roles.forEach((r) => roles.add(r));
+    }
+
+    // resource_access roles (B2B only — service account client roles)
+    if (source === "b2b" && payload?.resource_access) {
+      const clientId = this.config?.credentials?.clientId;
+      if (clientId && payload.resource_access[clientId]?.roles) {
+        payload.resource_access[clientId].roles!.forEach((r) => roles.add(r));
+      }
+    }
+
+    return roles;
+  }
+
+  private assertRoles(available: Set<string>, meta: RolesOptions, label: string): void {
+    const hasMatch = meta.roles.map((r) => available.has(r));
+    const passed = meta.mode === "all" ? hasMatch.every(Boolean) : hasMatch.some(Boolean);
+
+    if (!passed) {
+      throw new BaseAppError({
+        message: `Insufficient roles for ${label} token`,
+        status: HTTP_STATUS.FORBIDDEN,
+        code: ROLES_ERROR_CODE.INSUFFICIENT_ROLES,
+        context: { required: meta.roles, source: label },
+      });
+    }
   }
 
   private decodeJwtPayload(token: string): KeycloakJwtPayload {
     try {
       const parts = token.split(".");
       if (parts.length < 2) return {};
-      const payload = parts[1];
+      const padded = parts[1].replace(/-/g, "+").replace(/_/g, "/");
       const BufferCtor = (
         globalThis as unknown as {
-          Buffer?: {
-            from: (input: string, encoding: string) => { toString: (enc: string) => string };
-          };
+          Buffer?: { from: (s: string, enc: string) => { toString: (enc: string) => string } };
         }
       ).Buffer;
       if (!BufferCtor) return {};
-      const decoded = BufferCtor.from(payload, "base64").toString("utf8");
-      return JSON.parse(decoded) as KeycloakJwtPayload;
+      return JSON.parse(BufferCtor.from(padded, "base64").toString("utf8")) as KeycloakJwtPayload;
     } catch {
       return {};
     }

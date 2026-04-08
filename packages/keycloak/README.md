@@ -129,66 +129,153 @@ Resultado no log:
 [MyController.getToken][InMemoryCacheProvider.set] → token cached
 ```
 
-### BearerTokenGuard — autenticação B2B via introspecção
+### Contrato de headers (Kong → API)
 
-Valida que o header `Authorization: Bearer <token>` contém um token ativo chamando
-`POST /token/introspect` no Keycloak. Use sempre em conjunto com `RolesGuard` em rotas B2B.
+```
+Authorization: Bearer <service_token>   → identidade do chamador (B2B)
+X-Access-Token: <user_jwt>              → token original do usuário (B2C)
+```
+
+Kong valida o JWT do usuário via JWKS (local, zero chamadas ao Keycloak por request) e injeta os dois headers antes de encaminhar a request ao API.
+
+---
+
+### Guards
+
+| Guard | Valida | Quando usar |
+|---|---|---|
+| `B2CGuard` | `X-Access-Token` presente | Rota exclusiva de usuários via Kong |
+| `B2BGuard` | `Authorization` via introspection | Rota exclusiva de serviços internos |
+| `ApiAuthGuard` | Detecta path e delega | Rota acessível pelos dois paths |
+| `RolesGuard` | Roles no JWT correto | Sempre junto a um guard acima |
+| `BearerTokenGuard` | `Authorization` via introspection | Nível baixo; prefira `B2BGuard` |
+
+**Guard order matters** — guards de autenticação devem vir antes de `RolesGuard`.
+
+---
+
+### Decorators
+
+#### `@AuthUser(param?)`
+Extrai claim do token em `X-Access-Token`. Padrão: claim configurado em `userId` (default `sub`). Decodificação local, sem I/O.
 
 ```ts
-import { Controller, Headers, Post, UseGuards } from "@nestjs/common";
-import { BearerTokenGuard, Roles, RolesGuard } from "@adatechnology/auth-keycloak";
+@AuthUser()                                           // sub (default)
+@AuthUser('email')                                    // claim único
+@AuthUser(['preferred_username', 'email', 'sub'])     // primeiro não-vazio
+@AuthUser({ claim: 'email', header: 'x-user-jwt' }) // header customizado por rota
+```
 
-@Controller("orders")
-export class OrdersController {
-  @Post()
-  @Roles("manage-requests")
-  @UseGuards(BearerTokenGuard, RolesGuard)
-  create(@Headers("x-user-id") keycloakId: string) {}
+#### `@CallerToken(param?)`
+Extrai claim do token em `Authorization`. Padrão: claim configurado em `callerId` (default `azp`).
+
+```ts
+@CallerToken()                                              // azp (default)
+@CallerToken('sub')                                         // claim único
+@CallerToken(['client_id', 'azp'])                          // primeiro não-vazio
+@CallerToken({ header: 'x-service-token', claim: 'azp' }) // header customizado
+```
+
+#### `@AccessToken(header?)`
+Retorna o JWT bruto do header B2C. Use quando precisar de claims não-string ou repassar o token.
+
+```ts
+@AccessToken()              // header B2C padrão
+@AccessToken('x-user-jwt')  // header customizado
+```
+
+#### `@Roles(...)`
+Declara roles necessárias. Sempre usado com `RolesGuard`.
+
+```ts
+@Roles('user-manager')
+@Roles({ roles: ['admin', 'user-manager'], mode: 'any' })  // qualquer (default)
+@Roles({ roles: ['admin', 'user-manager'], mode: 'all' })  // todas
+```
+
+---
+
+### Exemplos de uso
+
+**B2C — usuário via Kong:**
+```ts
+@Get('me')
+@Roles('user-manager')
+@UseGuards(B2CGuard, RolesGuard)
+async getMe(
+  @AuthUser() id: string,
+  @AuthUser('email') email: string,
+  @AuthUser(['preferred_username', 'email']) name: string,
+  @AccessToken() rawToken: string,
+) {
+  return { id, email, name };
 }
 ```
 
-**Por que dois guards em sequência?**
+**B2B — serviço interno:**
+```ts
+@Post('internal/notify')
+@Roles('send-notifications')
+@UseGuards(B2BGuard, RolesGuard)
+async notify(
+  @CallerToken() caller: string,  // 'domestic-backend-bff'
+) {
+  return { caller };
+}
+```
+
+**Ambos os paths:**
+```ts
+@Get(':id')
+@Roles('user-manager')
+@UseGuards(ApiAuthGuard, RolesGuard)
+async findById(
+  @Param('id') id: string,
+  @AuthUser() userId: string,    // vazio no B2B-only path
+  @CallerToken() caller: string,
+) { ... }
+```
+
+---
+
+### Configuração de headers e claims
+
+Configurável via env ou `forRoot()`. Prioridade: `forRoot()` > `process.env` > default.
+
+**Env vars:**
+```env
+KEYCLOAK_B2C_TOKEN_HEADER=x-access-token        # header do user JWT
+KEYCLOAK_B2B_TOKEN_HEADER=authorization         # header do service token
+KEYCLOAK_USER_ID_CLAIM=sub                      # claim(s) para user ID (comma-separated)
+KEYCLOAK_CALLER_ID_CLAIM=azp                    # claim(s) para caller ID (comma-separated)
+```
+
+**`forRoot()` (sobrescreve env):**
+```ts
+KeycloakModule.forRoot({
+  ...
+  headers: { b2cToken: 'x-access-token', b2bToken: 'authorization' },
+  claims: {
+    userId: ['preferred_username', 'email', 'sub'],  // string ou string[]
+    callerId: ['client_id', 'azp'],
+  },
+})
+```
+
+---
+
+### BearerTokenGuard — autenticação B2B via introspecção
+
+Valida `Authorization: Bearer <token>` chamando `POST /token/introspect` no Keycloak.
 
 | Guard | Mecanismo | HTTP? | Falha |
 |---|---|---|---|
-| `BearerTokenGuard` | `POST /token/introspect` ao Keycloak | Sim | 401 — token inativo/expirado/forjado |
-| `RolesGuard` | Decode local do payload JWT | Não | 403 — permissão insuficiente |
+| `BearerTokenGuard` | `POST /token/introspect` | Sim | 401 |
+| `RolesGuard` | Decode local do payload | Não | 403 |
 
-O `RolesGuard` sozinho **não é seguro** para autenticação: ele apenas decodifica o payload JWT
-sem verificar a assinatura, o que significa que um token forjado passaria. O `BearerTokenGuard`
-é quem garante autenticidade via introspecção.
+O `RolesGuard` sozinho **não é seguro** — ele decodifica sem verificar assinatura.
 
-### Autorização com @Roles
-
-```ts
-import { Controller, Get, UseGuards } from "@nestjs/common";
-import { Roles, RolesGuard } from "@adatechnology/auth-keycloak";
-
-@Controller("secure")
-export class SecureController {
-  @Get("public")
-  @UseGuards(RolesGuard)
-  public() {
-    return { ok: true };
-  }
-
-  @Get("admin")
-  @UseGuards(RolesGuard)
-  @Roles("admin")
-  adminOnly() {
-    return { ok: true };
-  }
-
-  @Get("team")
-  @UseGuards(RolesGuard)
-  @Roles({ roles: ["manager", "lead"], mode: "all" }) // AND — requer ambas as roles
-  teamOnly() {
-    return { ok: true };
-  }
-}
-```
-
-O `RolesGuard` extrai roles de `realm_access.roles` e `resource_access[clientId].roles` do JWT.
+---
 
 ### Tratamento de erros
 
@@ -213,6 +300,10 @@ try {
 | `KEYCLOAK_REALM` | `BACKEND` |
 | `KEYCLOAK_CLIENT_ID` | `backend-api` |
 | `KEYCLOAK_CLIENT_SECRET` | `backend-api-secret` |
+| `KEYCLOAK_B2C_TOKEN_HEADER` | `x-access-token` |
+| `KEYCLOAK_B2B_TOKEN_HEADER` | `authorization` |
+| `KEYCLOAK_USER_ID_CLAIM` | `sub` |
+| `KEYCLOAK_CALLER_ID_CLAIM` | `azp` |
 
 ### Notas
 

@@ -19,6 +19,7 @@ import {
 } from "./keycloak.token";
 import { KeycloakConfig } from "./keycloak.interface";
 import { KEYCLOAK_CONFIG } from "./keycloak.token";
+import { configureTokenHeaders, configureTokenClaims } from "./keycloak.headers";
 
 @Module({})
 export class KeycloakModule {
@@ -26,6 +27,9 @@ export class KeycloakModule {
     config: KeycloakConfig,
     httpConfig?: AxiosRequestConfig | AxiosInstance,
   ): DynamicModule {
+    if (config.headers) configureTokenHeaders(config.headers);
+    if (config.claims) configureTokenClaims(config.claims);
+
     return {
       module: KeycloakModule,
       global: true,
