@@ -17,7 +17,7 @@
     "bootstrap": "pnpm install",
     "build": "pnpm run build:libs-ordered",
     "build:packages": "pnpm run build:libs-ordered",
-    "build:libs-ordered": "pnpm --filter @adatechnology/logger run build && pnpm --filter @adatechnology/cache run build && pnpm --filter @adatechnology/http-client run build && pnpm --filter @adatechnology/auth-keycloak run build",
+    "build:libs-ordered": "pnpm --filter @adatechnology/logger run build && pnpm --filter @adatechnology/cache run build && pnpm --filter @adatechnology/http-client run build && pnpm --filter @adatechnology/shared run build && pnpm --filter @adatechnology/auth-keycloak run build",
     "build:all": "pnpm run build:libs-ordered && pnpm --filter example build || true",
     "dev": "turbo run dev --parallel",
     "clean": "rm -rf dist packages/**/dist",
