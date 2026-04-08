@@ -174,3 +174,5 @@ pnpm run start:dev
 ## 📦 Publicação
 
 Veja `PUBLISHING.md` para o fluxo de publish (local dry-run e CI).
+
+<!-- ci-trigger: 2026-04-07 - trigger workflows -->
