@@ -21,6 +21,7 @@
     "@nestjs/core": "^11"
   },
   "devDependencies": {
-    "tsup": "^8.5.1"
+    "tsup": "^8.5.1",
+    "@esbuild-plugins/tsconfig-paths": "^0.1.2"
   }
 }
