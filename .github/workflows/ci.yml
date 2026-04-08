@@ -3,6 +3,14 @@ name: CI
 on:
   push:
     branches: [main]
+    paths:
+      - "src/**"
+      - "packages/**"
+      - "example/**"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
+      - "tsconfig*.json"
   pull_request:
     branches: [main]
 
