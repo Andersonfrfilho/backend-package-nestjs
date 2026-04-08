@@ -14,4 +14,8 @@ export type {
 export type { KeycloakProviderInterface } from "./keycloak.interface";
 export { Roles } from "./roles.decorator";
 export { RolesGuard } from "./roles.guard";
+export { B2BGuard } from "./b2b.guard";
+export { B2CGuard } from "./b2c.guard";
+export { ApiAuthGuard } from "./api-auth.guard";
+export { AuthUser } from "./auth-user.decorator";
 export { KeycloakError } from "./errors/keycloak-error";
