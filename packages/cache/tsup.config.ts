@@ -1,4 +1,5 @@
 import { defineConfig } from "tsup";
+import { TsconfigPathsPlugin } from "@esbuild-plugins/tsconfig-paths";
 
 export default defineConfig({
   entry: ["src/index.ts"],
@@ -11,4 +12,5 @@ export default defineConfig({
   // Ensure shared is bundled into the package at build time so published packages
   // don't require the private `@adatechnology/shared` package from npm.
   noExternal: ["@adatechnology/shared"],
+  esbuildPlugins: [TsconfigPathsPlugin({})],
 });

@@ -4,11 +4,11 @@ on:
   push:
     branches: [main]
     paths:
-      - 'packages/**'
-      - 'package.json'
-      - 'pnpm-workspace.yaml'
-      - '.changeset/**'
-      - 'packages/**/package.json'
+      - "packages/**"
+      - "package.json"
+      - "pnpm-workspace.yaml"
+      - ".changeset/**"
+      - "packages/**/package.json"
   workflow_dispatch: {}
 
 env:

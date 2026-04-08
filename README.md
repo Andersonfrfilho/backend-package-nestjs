@@ -165,6 +165,7 @@ Este monorepo suporta cenários complexos de produção:
 - **Infraestrutura**: Configuração de Keycloak e Redis via `example/docker-compose.yml`.
 
 Para rodar o exemplo:
+
 ```bash
 cd example
 docker-compose up -d
