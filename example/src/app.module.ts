@@ -13,6 +13,7 @@ import { SecureModule } from './secure/secure.module';
 import { KeycloakDemoModule } from './keycloak-demo/keycloak-demo.module';
 import { CacheDemoModule } from './cache-demo/cache-demo.module';
 import { HTTP_LOGGING_INTERCEPTOR, LoggerModule, RequestContextMiddleware } from '@adatechnology/logger';
+import { HealthModule } from './health/health.module';
 
 @Module({
   imports: [
@@ -57,6 +58,7 @@ import { HTTP_LOGGING_INTERCEPTOR, LoggerModule, RequestContextMiddleware } from
     KeycloakDemoModule,
     // secure demo that shows role-based decorators & guard
     SecureModule,
+    HealthModule,
   ],
   controllers: [AppController],
   providers: [

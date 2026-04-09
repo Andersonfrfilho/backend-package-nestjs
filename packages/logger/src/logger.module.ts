@@ -1,6 +1,6 @@
 import { DynamicModule, Module, Scope, Provider, Global } from "@nestjs/common";
 import { LoggerProvider } from "./logger.provider";
-import { LOGGER_PROVIDER, HTTP_LOGGING_INTERCEPTOR } from "./logger.token";
+import { LOGGER_PROVIDER, LOGGER_CONFIG, HTTP_LOGGING_INTERCEPTOR } from "./logger.token";
 import { WinstonImplementationModule } from "./implementations/winston/winston.logger.module";
 import { HttpLoggingInterceptor } from "./interceptors/http-logging.interceptor";
 import type { LoggerConfig } from "./logger.config";
@@ -26,8 +26,12 @@ export class LoggerModule {
     return {
       module: LoggerModule,
       imports: [implModule],
-      providers: [loggerProvider, httpLoggingInterceptorProvider],
-      exports: [LOGGER_PROVIDER, HTTP_LOGGING_INTERCEPTOR],
+      providers: [
+        { provide: LOGGER_CONFIG, useValue: config ?? {} },
+        loggerProvider,
+        httpLoggingInterceptorProvider,
+      ],
+      exports: [LOGGER_PROVIDER, LOGGER_CONFIG, HTTP_LOGGING_INTERCEPTOR],
     };
   }
 
@@ -44,12 +48,17 @@ export class LoggerModule {
       ],
       providers: [
         {
+          provide: LOGGER_CONFIG,
+          useFactory: options.useFactory,
+          inject: options.inject || [],
+        },
+        {
           provide: LOGGER_PROVIDER,
           useClass: LoggerProvider,
         },
         httpLoggingInterceptorProvider,
       ],
-      exports: [LOGGER_PROVIDER, HTTP_LOGGING_INTERCEPTOR],
+      exports: [LOGGER_PROVIDER, LOGGER_CONFIG, HTTP_LOGGING_INTERCEPTOR],
     };
   }
 }

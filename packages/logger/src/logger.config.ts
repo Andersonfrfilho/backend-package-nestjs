@@ -46,6 +46,12 @@ export interface LoggerConfig extends WinstonModuleConfig {
    * Versão da biblioteca/módulo que está gerando o log
    */
   libVersion?: string;
+
+  /**
+   * Rotas excluídas do HttpLoggingInterceptor (ex.: ['/health'])
+   * Suporta prefixo exato ou parcial via startsWith
+   */
+  interceptorExcludedPaths?: string[];
 }
 
 export const DEFAULT_LOGGER_CONFIG: LoggerConfig = {
