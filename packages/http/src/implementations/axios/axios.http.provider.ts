@@ -25,7 +25,7 @@ import {
   AxiosHttpProviderInterface,
   CacheEntry,
 } from "./axios.http.interfaces";
-import { AxiosHttpProviderOptions } from "./types/axios.http.types";
+import type { AxiosHttpProviderOptions } from "./types/axios.http.types";
 import {
   UrlConfig,
   UrlDataConfig,
