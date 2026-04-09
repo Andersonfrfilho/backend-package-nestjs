@@ -12,7 +12,7 @@ import { CacheModule } from '@adatechnology/cache';
 import { SecureModule } from './secure/secure.module';
 import { KeycloakDemoModule } from './keycloak-demo/keycloak-demo.module';
 import { CacheDemoModule } from './cache-demo/cache-demo.module';
-import { LoggerModule, RequestContextMiddleware } from '@adatechnology/logger';
+import { HTTP_LOGGING_INTERCEPTOR, LoggerModule, RequestContextMiddleware } from '@adatechnology/logger';
 
 @Module({
   imports: [
@@ -61,6 +61,8 @@ import { LoggerModule, RequestContextMiddleware } from '@adatechnology/logger';
   controllers: [AppController],
   providers: [
     AppService,
+    // log every HTTP request/response (method, path, headers, body, statusCode, durationMs)
+    { provide: APP_INTERCEPTOR, useExisting: HTTP_LOGGING_INTERCEPTOR },
     // register the Keycloak HTTP interceptor as a global interceptor (useExisting to reuse provider from KeycloakModule)
     { provide: APP_INTERCEPTOR, useExisting: KEYCLOAK_HTTP_INTERCEPTOR },
   ],

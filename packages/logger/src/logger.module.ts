@@ -1,27 +1,33 @@
 import { DynamicModule, Module, Scope, Provider, Global } from "@nestjs/common";
 import { LoggerProvider } from "./logger.provider";
-import { LOGGER_PROVIDER } from "./logger.token";
+import { LOGGER_PROVIDER, HTTP_LOGGING_INTERCEPTOR } from "./logger.token";
 import { WinstonImplementationModule } from "./implementations/winston/winston.logger.module";
+import { HttpLoggingInterceptor } from "./interceptors/http-logging.interceptor";
 import type { LoggerConfig } from "./logger.config";
+
+const httpLoggingInterceptorProvider: Provider = {
+  provide: HTTP_LOGGING_INTERCEPTOR,
+  useClass: HttpLoggingInterceptor,
+};
 
 @Global()
 @Module({})
 export class LoggerModule {
   static forRoot(config?: LoggerConfig): DynamicModule {
     const implModule = WinstonImplementationModule.forRoot(config);
-    const provider: Provider = {
+    const loggerProvider: Provider = {
       provide: LOGGER_PROVIDER,
       useClass: LoggerProvider,
     };
     if (config && config.requestScoped) {
-      provider.scope = Scope.REQUEST;
+      loggerProvider.scope = Scope.REQUEST;
     }
 
     return {
       module: LoggerModule,
       imports: [implModule],
-      providers: [provider],
-      exports: [LOGGER_PROVIDER],
+      providers: [loggerProvider, httpLoggingInterceptorProvider],
+      exports: [LOGGER_PROVIDER, HTTP_LOGGING_INTERCEPTOR],
     };
   }
 
@@ -41,8 +47,9 @@ export class LoggerModule {
           provide: LOGGER_PROVIDER,
           useClass: LoggerProvider,
         },
+        httpLoggingInterceptorProvider,
       ],
-      exports: [LOGGER_PROVIDER],
+      exports: [LOGGER_PROVIDER, HTTP_LOGGING_INTERCEPTOR],
     };
   }
 }
