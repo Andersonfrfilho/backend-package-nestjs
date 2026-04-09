@@ -8,6 +8,9 @@ import { CACHE_PROVIDER } from "@adatechnology/cache";
 import type { CacheProviderInterface } from "@adatechnology/cache";
 import type { AxiosRequestConfig, AxiosInstance } from "axios";
 
+import { ApiAuthGuard } from "./api-auth.guard";
+import { B2BGuard } from "./b2b.guard";
+import { B2CGuard } from "./b2c.guard";
 import { BearerTokenGuard } from "./bearer-token.guard";
 import { KeycloakClient } from "./keycloak.client";
 import { KeycloakHttpInterceptor } from "./keycloak.http.interceptor";
@@ -74,6 +77,9 @@ export class KeycloakModule {
         },
         RolesGuard,
         BearerTokenGuard,
+        B2CGuard,
+        B2BGuard,
+        ApiAuthGuard,
       ],
       exports: [
         Reflector,
@@ -83,6 +89,9 @@ export class KeycloakModule {
         KEYCLOAK_CONFIG,
         RolesGuard,
         BearerTokenGuard,
+        B2CGuard,
+        B2BGuard,
+        ApiAuthGuard,
       ],
     };
   }

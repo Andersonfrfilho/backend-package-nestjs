@@ -1,6 +1,6 @@
 {
   "name": "@adatechnology/auth-keycloak",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "publishConfig": {
     "access": "public"
   },
@@ -28,6 +28,7 @@
   "devDependencies": {
     "@adatechnology/shared": "workspace:*",
     "@esbuild-plugins/tsconfig-paths": "^0.1.2",
+    "@swc/core": "^1.15.24",
     "tsup": "^8.5.1",
     "typescript": "^5.2.0"
   }

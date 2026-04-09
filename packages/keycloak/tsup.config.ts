@@ -14,4 +14,7 @@ export default defineConfig({
   // the unpublished `@adatechnology/shared` package from npm.
   noExternal: ["@adatechnology/shared"],
   esbuildPlugins: [TsconfigPathsPlugin({})],
+  // Required for NestJS DI: esbuild strips decorator metadata by default,
+  // breaking constructor-based injection. This re-enables __metadata emission.
+  decoratorMetadata: true,
 });
