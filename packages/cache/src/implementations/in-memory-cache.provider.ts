@@ -7,11 +7,11 @@ import {
 
 import {
   CacheProviderInterface,
-  delParams,
-  getEncryptedParams,
-  getParams,
-  setEncryptedParams,
-  setParams,
+  DelParams,
+  GetEncryptedParams,
+  GetParams,
+  SetEncryptedParams,
+  SetParams,
 } from "../cache.interface";
 import { CACHE_ENCRYPTION_SECRET } from "../cache.token";
 import { LIB_NAME, LIB_VERSION } from "../cache.constants";
@@ -35,11 +35,11 @@ export class InMemoryCacheProvider implements CacheProviderInterface {
   ) {}
 
   private callerLogContext(): Record<string, unknown> | undefined {
-    const ctx = getContext() as Record<string, unknown> | undefined;
+    const ctx = getContext();
     return ctx?.logContext as Record<string, unknown> | undefined;
   }
 
-  async get<T>({ key }: getParams): Promise<T | null> {
+  async get<T>({ key }: GetParams): Promise<T | null> {
     const libMethod = `${this.className}.get`;
     const entry = this.cache.get(key);
 
@@ -92,7 +92,7 @@ export class InMemoryCacheProvider implements CacheProviderInterface {
     return entry.value as T;
   }
 
-  async set<T>({ key, value, ttlInSeconds }: setParams<T>): Promise<void> {
+  async set<T>({ key, value, ttlInSeconds }: SetParams<T>): Promise<void> {
     const libMethod = `${this.className}.set`;
     const expiry = ttlInSeconds ? Date.now() + ttlInSeconds * 1000 : null;
     this.cache.set(key, { value, expiry });
@@ -110,7 +110,7 @@ export class InMemoryCacheProvider implements CacheProviderInterface {
     });
   }
 
-  async del({ key }: delParams): Promise<void> {
+  async del({ key }: DelParams): Promise<void> {
     const libMethod = `${this.className}.del`;
     this.cache.delete(key);
     this.logger?.debug?.({
@@ -146,7 +146,7 @@ export class InMemoryCacheProvider implements CacheProviderInterface {
     value,
     ttlInSeconds,
     secret,
-  }: setEncryptedParams<T>): Promise<void> {
+  }: SetEncryptedParams<T>): Promise<void> {
     const libMethod = `${this.className}.setEncrypted`;
     const resolvedSecret = secret ?? this.encryptionSecret;
 
@@ -180,7 +180,7 @@ export class InMemoryCacheProvider implements CacheProviderInterface {
   async getEncrypted<T>({
     key,
     secret,
-  }: getEncryptedParams): Promise<T | null> {
+  }: GetEncryptedParams): Promise<T | null> {
     const libMethod = `${this.className}.getEncrypted`;
     const resolvedSecret = secret ?? this.encryptionSecret;
 

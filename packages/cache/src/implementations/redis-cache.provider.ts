@@ -4,11 +4,11 @@ import Redis, { RedisOptions } from "ioredis";
 
 import {
   CacheProviderInterface,
-  delParams,
-  getEncryptedParams,
-  getParams,
-  setEncryptedParams,
-  setParams,
+  DelParams,
+  GetEncryptedParams,
+  GetParams,
+  SetEncryptedParams,
+  SetParams,
 } from "../cache.interface";
 import { LIB_NAME, LIB_VERSION } from "../cache.constants";
 import { decrypt, encrypt } from "../crypto.utils";
@@ -29,11 +29,11 @@ export class RedisCacheProvider
   }
 
   private callerLogContext(): Record<string, unknown> | undefined {
-    const ctx = getContext() as Record<string, unknown> | undefined;
+    const ctx = getContext();
     return ctx?.logContext as Record<string, unknown> | undefined;
   }
 
-  async get<T>({ key }: getParams): Promise<T | null> {
+  async get<T>({ key }: GetParams): Promise<T | null> {
     const libMethod = `${this.className}.get`;
     const value = await this.redis.get(key);
 
@@ -68,7 +68,7 @@ export class RedisCacheProvider
     return JSON.parse(value) as T;
   }
 
-  async set<T>({ key, value, ttlInSeconds }: setParams<T>): Promise<void> {
+  async set<T>({ key, value, ttlInSeconds }: SetParams<T>): Promise<void> {
     const libMethod = `${this.className}.set`;
     const stringifiedValue = JSON.stringify(value);
 
@@ -92,7 +92,7 @@ export class RedisCacheProvider
     });
   }
 
-  async del({ key }: delParams): Promise<void> {
+  async del({ key }: DelParams): Promise<void> {
     const libMethod = `${this.className}.del`;
     await this.redis.del(key);
     this.logger?.debug?.({
@@ -128,7 +128,7 @@ export class RedisCacheProvider
     value,
     ttlInSeconds,
     secret,
-  }: setEncryptedParams<T>): Promise<void> {
+  }: SetEncryptedParams<T>): Promise<void> {
     const libMethod = `${this.className}.setEncrypted`;
     const resolvedSecret = secret ?? this.encryptionSecret;
 
@@ -166,7 +166,7 @@ export class RedisCacheProvider
   async getEncrypted<T>({
     key,
     secret,
-  }: getEncryptedParams): Promise<T | null> {
+  }: GetEncryptedParams): Promise<T | null> {
     const libMethod = `${this.className}.getEncrypted`;
     const resolvedSecret = secret ?? this.encryptionSecret;
 

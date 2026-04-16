@@ -12,6 +12,16 @@ import { EXCLUDE_HTTP_LOGGING_KEY } from "./exclude-http-logging.decorator";
 export class HttpLoggingInterceptor implements NestInterceptor {
   private readonly excludedPaths: string[];
 
+  private toErrorMessage(error: unknown): string {
+    if (error instanceof Error) return error.message;
+    if (typeof error === "string") return error;
+    try {
+      return JSON.stringify(error);
+    } catch {
+      return "unknown error";
+    }
+  }
+
   constructor(
     @Inject(LOGGER_PROVIDER)
     private readonly logger: LoggerProviderInterface,
@@ -99,7 +109,7 @@ export class HttpLoggingInterceptor implements NestInterceptor {
               },
               response: {
                 durationMs,
-                error: error instanceof Error ? error.message : String(error),
+                error: this.toErrorMessage(error),
               },
             },
           });

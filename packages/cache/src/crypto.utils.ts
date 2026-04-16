@@ -11,7 +11,7 @@ import {
   SALT,
   TAG_LENGTH,
 } from "./constants/crypto.constants";
-import type { decryptParams, encryptParams } from "./types/crypto.types";
+import type { DecryptParams, EncryptParams } from "./types/crypto.types";
 
 /**
  * Derives a 32-byte key from an arbitrary-length secret using scrypt.
@@ -24,7 +24,7 @@ function deriveKey(secret: string): Buffer {
  * Encrypts `plaintext` using AES-256-GCM.
  * Returns a base64 string: iv(12) + tag(16) + ciphertext
  */
-export function encrypt({ plaintext, secret }: encryptParams): string {
+export function encrypt({ plaintext, secret }: EncryptParams): string {
   const key = deriveKey(secret);
   const iv = randomBytes(IV_LENGTH);
   const cipher = createCipheriv(ALGORITHM, key, iv);
@@ -42,7 +42,7 @@ export function encrypt({ plaintext, secret }: encryptParams): string {
  * Decrypts a base64 string produced by `encrypt`.
  * Throws if the auth tag is invalid (tampered data).
  */
-export function decrypt({ encoded, secret }: decryptParams): string {
+export function decrypt({ encoded, secret }: DecryptParams): string {
   const key = deriveKey(secret);
   const data = Buffer.from(encoded, "base64");
 

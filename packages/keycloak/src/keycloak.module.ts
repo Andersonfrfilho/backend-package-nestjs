@@ -16,13 +16,16 @@ import { KeycloakClient } from "./keycloak.client";
 import { KeycloakHttpInterceptor } from "./keycloak.http.interceptor";
 import { RolesGuard } from "./roles.guard";
 import {
+  KEYCLOAK_CONFIG,
   KEYCLOAK_CLIENT,
   KEYCLOAK_HTTP_INTERCEPTOR,
   KEYCLOAK_PROVIDER,
 } from "./keycloak.token";
 import { KeycloakConfig } from "./keycloak.interface";
-import { KEYCLOAK_CONFIG } from "./keycloak.token";
-import { configureTokenHeaders, configureTokenClaims } from "./keycloak.headers";
+import {
+  configureTokenHeaders,
+  configureTokenClaims,
+} from "./keycloak.headers";
 
 @Module({})
 export class KeycloakModule {

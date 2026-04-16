@@ -1,6 +1,6 @@
 import { DynamicModule, Module, Provider } from "@nestjs/common";
 import { createLogger, format, transports, LoggerOptions } from "winston";
-import { inspect } from "util";
+import { inspect } from "node:util";
 import { WinstonLoggerProvider } from "./winston.logger.provider";
 import {
   WINSTON_LOGGER,
@@ -10,6 +10,227 @@ import {
 import type { LoggerConfig } from "../../logger.config";
 import { DEFAULT_LOG_LEVEL } from "./winston.logger.constants";
 import { buildDefaultObfuscator } from "../../obfuscator";
+
+type WritableLogInfo = Record<string, unknown> & {
+  level?: unknown;
+  message?: unknown;
+  timestamp?: unknown;
+  requestId?: unknown;
+  context?: unknown;
+  source?: unknown;
+  appName?: unknown;
+  appVersion?: unknown;
+  lib?: unknown;
+  libVersion?: unknown;
+  libMethod?: unknown;
+  stack?: unknown;
+  meta?: unknown;
+};
+
+type MetaLogContext = {
+  className?: unknown;
+  methodName?: unknown;
+};
+
+function asString(value: unknown): string | undefined {
+  if (typeof value === "string") return value;
+  if (typeof value === "number" || typeof value === "boolean") {
+    return String(value);
+  }
+  return undefined;
+}
+
+function colorizeText(
+  useColors: boolean,
+  color: string,
+  reset: string,
+  text: string,
+): string {
+  return useColors ? `${color}${text}${reset}` : text;
+}
+
+function fillInfoFromMeta(info: WritableLogInfo): void {
+  if (!info.meta || typeof info.meta !== "object") return;
+
+  const meta = info.meta as Record<string, unknown>;
+  const metadataKeys = [
+    "requestId",
+    "context",
+    "source",
+    "lib",
+    "libVersion",
+    "libMethod",
+    "appName",
+    "appVersion",
+  ] as const;
+
+  for (const key of metadataKeys) {
+    if (meta[key] && !info[key]) {
+      info[key] = meta[key];
+      delete meta[key];
+    }
+  }
+
+  const logContext = meta.logContext as MetaLogContext | undefined;
+  if (!logContext || info.source) return;
+
+  const className = asString(logContext.className);
+  const methodName = asString(logContext.methodName);
+
+  if (className && methodName) {
+    info.source = `${className}.${methodName}`;
+  } else if (className) {
+    info.source = className;
+  } else if (methodName) {
+    info.source = methodName;
+  }
+}
+
+function applyDefaultInfoValues(
+  info: WritableLogInfo,
+  config?: LoggerConfig,
+): void {
+  info.requestId = info.requestId || "no-request-id";
+  info.context = info.context || config?.context || "App";
+  info.appName = info.appName || config?.appName;
+  info.appVersion = info.appVersion || config?.appVersion;
+  info.lib = info.lib || config?.lib;
+  info.libVersion = info.libVersion || config?.libVersion;
+}
+
+function buildMethodDisplays(params: {
+  context: string;
+  source?: string;
+  lib?: string;
+  libMethod?: string;
+  colorize: (text: string) => string;
+}): { sourceDisplay: string; libMethodDisplay: string } {
+  const { context, source, lib, libMethod, colorize } = params;
+
+  let sourceDisplay = "";
+  let libMethodDisplay = "";
+
+  if (source) {
+    sourceDisplay = `[${colorize(source)}]`;
+  }
+
+  if (lib) {
+    const methodPath = libMethod ? `${context}.${libMethod}` : context;
+    libMethodDisplay = `[${colorize(methodPath)}]`;
+    if (source === context || source === methodPath) {
+      sourceDisplay = "";
+    }
+    return { sourceDisplay, libMethodDisplay };
+  }
+
+  if (!source) {
+    libMethodDisplay = `[${colorize(context)}]`;
+    return { sourceDisplay, libMethodDisplay };
+  }
+
+  if (source.startsWith(`${context}.`) || source === context) {
+    libMethodDisplay = `[${colorize(source)}]`;
+    sourceDisplay = "";
+    return { sourceDisplay, libMethodDisplay };
+  }
+
+  libMethodDisplay = `[${colorize(context)}]`;
+  sourceDisplay = `[${colorize(source)}]`;
+  return { sourceDisplay, libMethodDisplay };
+}
+
+function formatDevelopmentLog(
+  infoInput: WritableLogInfo,
+  useColors: boolean,
+  levelColorizer: ReturnType<typeof format.colorize>,
+): string {
+  const info = infoInput;
+  const level = asString(info.level) ?? "info";
+  const message = asString(info.message) ?? "";
+  const timestamp = asString(info.timestamp) ?? "";
+  const requestId = asString(info.requestId) ?? "no-request-id";
+  const context = asString(info.context) ?? "App";
+  const source = asString(info.source);
+  const appName = asString(info.appName);
+  const appVersion = asString(info.appVersion);
+  const lib = asString(info.lib);
+  const libMethod = asString(info.libMethod);
+  const libVersion = asString(info.libVersion);
+  const stack = asString(info.stack);
+
+  const meta =
+    info.meta && typeof info.meta === "object"
+      ? (info.meta as Record<string, unknown>)
+      : undefined;
+
+  const colors = {
+    reset: "\x1b[0m",
+    gray: "\x1b[90m",
+    cyan: "\x1b[36m",
+    magenta: "\x1b[35m",
+    yellow: "\x1b[33m",
+    red: "\x1b[31m",
+    green: "\x1b[32m",
+  };
+
+  const coloredLevel = useColors
+    ? levelColorizer.colorize(level, level.toUpperCase())
+    : level.toUpperCase();
+
+  const coloredTime = colorizeText(
+    useColors,
+    colors.gray,
+    colors.reset,
+    timestamp,
+  );
+  const coloredRequestId = colorizeText(
+    useColors,
+    colors.cyan,
+    colors.reset,
+    requestId,
+  );
+
+  let appDisplay = "";
+  if (appName) {
+    const appText = appVersion ? `${appName}@${appVersion}` : appName;
+    const appLabel = `App-${appText}`;
+    appDisplay = `[${colorizeText(useColors, colors.green, colors.reset, appLabel)}]`;
+  }
+
+  let libDisplay = "";
+  if (lib) {
+    const libText = libVersion ? `${lib}:${libVersion}` : lib;
+    libDisplay = `[${colorizeText(useColors, colors.yellow, colors.reset, libText)}]`;
+  }
+
+  const { sourceDisplay, libMethodDisplay } = buildMethodDisplays({
+    context,
+    source,
+    lib,
+    libMethod,
+    colorize: (text) =>
+      colorizeText(useColors, colors.magenta, colors.reset, text),
+  });
+
+  let output = `${appDisplay}${libDisplay}[${coloredRequestId}][${coloredTime}]${sourceDisplay}${libMethodDisplay}[${coloredLevel}] - ${message}`;
+
+  if (meta && typeof meta === "object" && Object.keys(meta).length > 0) {
+    const inspectedMeta = inspect(meta, {
+      colors: useColors,
+      depth: null,
+      compact: true,
+      sorted: true,
+      breakLength: Infinity,
+    });
+    output += ` - ${inspectedMeta}`;
+  }
+
+  if (stack) {
+    output += `\n${colorizeText(useColors, colors.red, colors.reset, stack)}`;
+  }
+
+  return output;
+}
 
 @Module({})
 export class WinstonImplementationModule {
@@ -91,181 +312,17 @@ export class WinstonImplementationModule {
 
     // Standard fields we want to ensure are in the log object
     const standardFields = format((info) => {
-      // Extract requestId and context from meta if they exist there
-      const meta = info.meta as any;
-      if (meta) {
-        if (meta.requestId && !info.requestId) {
-          info.requestId = meta.requestId;
-          delete meta.requestId;
-        }
-        if (meta.context && !info.context) {
-          info.context = meta.context;
-          delete meta.context;
-        }
-
-        // Extract source (used for className.methodName)
-        if (meta.source && !info.source) {
-          info.source = meta.source;
-          delete meta.source;
-        }
-
-        // Support lib identification from metadata
-        if (meta.lib && !info.lib) {
-          info.lib = meta.lib;
-          delete meta.lib;
-        }
-
-        // Support lib version identification from metadata
-        if (meta.libVersion && !info.libVersion) {
-          info.libVersion = meta.libVersion;
-          delete meta.libVersion;
-        }
-
-        // Support lib method identification
-        if (meta.libMethod && !info.libMethod) {
-          info.libMethod = meta.libMethod;
-          delete meta.libMethod;
-        }
-
-        // Support app identification from metadata
-        if (meta.appName && !info.appName) {
-          info.appName = meta.appName;
-          delete meta.appName;
-        }
-
-        // Support app version identification from metadata
-        if (meta.appVersion && !info.appVersion) {
-          info.appVersion = meta.appVersion;
-          delete meta.appVersion;
-        }
-
-        // Support logContext object from some providers
-        if (meta.logContext && !info.source) {
-          const lc = meta.logContext;
-          if (lc.className && lc.methodName) {
-            info.source = `${lc.className}.${lc.methodName}`;
-          } else if (lc.className) {
-            info.source = lc.className;
-          } else if (lc.methodName) {
-            info.source = lc.methodName;
-          }
-        }
-      }
-
-      // Default values
-      info.requestId = info.requestId || "no-request-id";
-      info.context = info.context || config?.context || "App";
-      info.appName = info.appName || config?.appName;
-      info.appVersion = info.appVersion || config?.appVersion;
-      info.lib = info.lib || config?.lib;
-      info.libVersion = info.libVersion || config?.libVersion;
-      
-      return info;
+      const writableInfo = info as WritableLogInfo;
+      fillInfoFromMeta(writableInfo);
+      applyDefaultInfoValues(writableInfo, config);
+      return writableInfo;
     });
 
     const levelColorizer = format.colorize();
 
     // Custom format for development (colorful and intuitive)
-    const developmentFormat = format.printf(
-      (info) => {
-        const { 
-          level, message, timestamp, requestId, context, source, 
-          meta, stack, appName, appVersion, lib, libMethod, libVersion 
-        } = info;
-        
-        // Colors (using ANSI codes for precision)
-        const colors = {
-          reset: "\x1b[0m",
-          gray: "\x1b[90m",
-          cyan: "\x1b[36m",
-          magenta: "\x1b[35m",
-          yellow: "\x1b[33m",
-          red: "\x1b[31m",
-          green: "\x1b[32m",
-          bold: "\x1b[1m",
-        };
-
-        const colorize = (color: string, text: string) => 
-          useColors ? `${color}${text}${colors.reset}` : text;
-
-        // No trailing space for the level itself, but keep it uppercase
-        const coloredLevel = useColors 
-          ? levelColorizer.colorize(level, level.toUpperCase()) 
-          : level.toUpperCase();
-          
-        const coloredTime = colorize(colors.gray, timestamp);
-        const coloredRequestId = colorize(colors.cyan, requestId);
-        
-        // App identification: [App-example@0.0.3]
-        let appDisplay = "";
-        if (appName) {
-          const appText = appVersion ? `${appName}@${appVersion}` : appName;
-          appDisplay = `[${colorize(colors.green, `App-${appText}`)}]`;
-        }
-
-        // Lib identification: [@adatechnology/http-client:0.0.2]
-        let libDisplay = "";
-        if (lib) {
-          const libText = libVersion ? `${lib}:${libVersion}` : lib;
-          libDisplay = `[${colorize(colors.yellow, libText)}]`;
-        }
-
-        const mag = colors.magenta;
-
-        // Context formatting logic:
-        // [Source] (Magenta) - From the caller (e.g., HttpClientController.listPokemon)
-        // [Context.Method] (Magenta) - From the lib itself (e.g., HttpRedisClient.get)
-        let sourceDisplay = "";
-        let libMethodDisplay = "";
-
-        if (source) {
-          sourceDisplay = `[${colorize(mag, source)}]`;
-        }
-
-        if (lib) {
-          // Inside a library log
-          const methodPath = libMethod ? `${context}.${libMethod}` : context;
-          libMethodDisplay = `[${colorize(mag, methodPath)}]`;
-          
-          // If source is the same as context or methodPath, we can omit it to avoid duplication
-          if (source === context || source === methodPath) {
-            sourceDisplay = "";
-          }
-        } else if (!source) {
-          // App-only log without source: use context
-          libMethodDisplay = `[${colorize(mag, context)}]`;
-        } else if (source.startsWith(`${context}.`) || source === context) {
-          // App-only log where source is more specific than context: use source only
-          libMethodDisplay = `[${colorize(mag, source)}]`;
-          sourceDisplay = "";
-        } else {
-          // App-only log with different context and source
-          libMethodDisplay = `[${colorize(mag, context)}]`;
-          sourceDisplay = `[${colorize(mag, source)}]`;
-        }
-
-        // Header line: [App][Lib][requestId][timestamp][Source][LibMethod][LEVEL]
-        let output = `${appDisplay}${libDisplay}[${coloredRequestId}][${coloredTime}]${sourceDisplay}${libMethodDisplay}[${coloredLevel}] - ${message}`;
-
-        // Meta data (Pretty printed if not empty)
-        if (meta && typeof meta === "object" && Object.keys(meta).length > 0) {
-          const inspectedMeta = inspect(meta, {
-            colors: useColors,
-            depth: null,
-            compact: true,
-            sorted: true,
-            breakLength: Infinity,
-          });
-          output += ` - ${inspectedMeta}`;
-        }
-
-        // Error stack trace
-        if (stack) {
-          output += `\n${colorize(colors.red, stack)}`;
-        }
-
-        return output;
-      }
+    const developmentFormat = format.printf((info) =>
+      formatDevelopmentLog(info as WritableLogInfo, useColors, levelColorizer),
     );
 
     const formats = [
@@ -294,11 +351,9 @@ export class WinstonImplementationModule {
       transports: [consoleTransport],
     };
 
-    const mergedOptions: LoggerOptions = Object.assign(
-      {},
-      defaultOptions,
-      config?.loggerOptions || {},
-    );
+    const mergedOptions: LoggerOptions = config?.loggerOptions
+      ? { ...defaultOptions, ...config.loggerOptions }
+      : defaultOptions;
 
     return createLogger(mergedOptions);
   }

@@ -1,33 +1,33 @@
-export type getParams = {
+export type GetParams = {
   key: string;
 };
 
-export type setParams<T> = {
+export type SetParams<T> = {
   key: string;
   value: T;
   ttlInSeconds?: number;
 };
 
-export type delParams = {
+export type DelParams = {
   key: string;
 };
 
-export type setEncryptedParams<T> = {
+export type SetEncryptedParams<T> = {
   key: string;
   value: T;
   ttlInSeconds?: number;
   secret?: string;
 };
 
-export type getEncryptedParams = {
+export type GetEncryptedParams = {
   key: string;
   secret?: string;
 };
 
 export interface CacheProviderInterface {
-  get<T>(params: getParams): Promise<T | null>;
-  set<T>(params: setParams<T>): Promise<void>;
-  del(params: delParams): Promise<void>;
+  get<T>(params: GetParams): Promise<T | null>;
+  set<T>(params: SetParams<T>): Promise<void>;
+  del(params: DelParams): Promise<void>;
   clear(): Promise<void>;
 
   /**
@@ -37,7 +37,7 @@ export interface CacheProviderInterface {
    * @param ttlInSeconds TTL em segundos (opcional)
    * @param secret Chave de criptografia (32 bytes / 64 hex chars). Se omitido usa a configuração do módulo.
    */
-  setEncrypted<T>(params: setEncryptedParams<T>): Promise<void>;
+  setEncrypted<T>(params: SetEncryptedParams<T>): Promise<void>;
 
   /**
    * Recupera, decifra e desserializa um valor armazenado com `setEncrypted`.
@@ -45,5 +45,5 @@ export interface CacheProviderInterface {
    * @param key    Chave do cache
    * @param secret Chave de criptografia usada no `setEncrypted` correspondente.
    */
-  getEncrypted<T>(params: getEncryptedParams): Promise<T | null>;
+  getEncrypted<T>(params: GetEncryptedParams): Promise<T | null>;
 }

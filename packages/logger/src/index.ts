@@ -1,9 +1,20 @@
 export { LoggerModule } from "./logger.module";
 export { LOGGER_PROVIDER, LOGGER_CONFIG, HTTP_LOGGING_INTERCEPTOR } from "./logger.token";
 export type {
+  DebugParams,
+  DebugResult,
+  ErrorParams,
+  ErrorResult,
+  InfoParams,
+  InfoResult,
+  LogParams,
+  LogResult,
   LoggerProviderInterface,
-  LogPayload,
   LoggerLevel,
+  WarnParams,
+  WarnResult,
+  WriteLogParams,
+  WriteLogResult,
 } from "./logger.interface";
 export { RequestContextMiddleware } from "./middleware/request-context.middleware";
 export { HttpLoggingInterceptor } from "./interceptors/http-logging.interceptor";

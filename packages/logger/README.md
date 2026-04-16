@@ -107,9 +107,7 @@ Ao realizar um log, você pode passar as seguintes propriedades para enriquecer 
 - `libMethod`: O método interno da biblioteca sendo executado. Ex: `get`.
 - `meta`: Objeto com metadados adicionais (será exibido em uma única linha compacta).
 
-> ✅ **Padrão recomendado:** enviar payload estruturado em `meta`.
->
-> ⚠️ **Compatibilidade legada:** payload em `params` ainda é aceito e promovido para `meta` internamente para não quebrar serviços antigos.
+> ✅ **Padrão obrigatório:** enviar payload estruturado em `meta`.
 
 ### `meta` vs `params` (recomendação)
 
@@ -130,20 +128,7 @@ this.logger.error({
 });
 ```
 
-Exemplo legado (ainda funciona, mas evite em código novo):
-
-```ts
-this.logger.error({
-  message: "Exception caught in filter",
-  context: "HttpExceptionFilter.logResponse",
-  requestId,
-  params: {
-    request: { path, method, headers, params, query, body },
-    response: { status, headers, messages },
-    error: { type, message, status, body, details },
-  },
-});
-```
+Campos fora do contrato (`message`, `context`, `meta`) não são recomendados na API pública.
 
 ### Exemplo de Log de Biblioteca
 

@@ -9,26 +9,27 @@ description: Patterns for @adatechnology/auth-keycloak. Guards (B2CGuard, B2BGua
 
 ```typescript
 KeycloakModule.forRoot({
-  baseUrl: 'http://localhost:8080',
-  realm: 'my-realm',
+  baseUrl: "http://localhost:8080",
+  realm: "my-realm",
   credentials: {
-    clientId: 'my-client',
-    clientSecret: 'secret',
-    grantType: 'client_credentials',
+    clientId: "my-client",
+    clientSecret: "secret",
+    grantType: "client_credentials",
   },
   // Optional: override header names and JWT claim names
   headers: {
-    b2cToken: 'x-access-token',   // default
-    b2bToken: 'authorization',    // default
+    b2cToken: "x-access-token", // default
+    b2bToken: "authorization", // default
   },
   claims: {
-    userId: ['preferred_username', 'email', 'sub'],  // string or string[]
-    callerId: ['client_id', 'azp'],
+    userId: ["preferred_username", "email", "sub"], // string or string[]
+    callerId: ["client_id", "azp"],
   },
-})
+});
 ```
 
 Alternatively configure via env (comma-separated for arrays):
+
 ```env
 KEYCLOAK_B2C_TOKEN_HEADER=x-access-token
 KEYCLOAK_B2B_TOKEN_HEADER=authorization
@@ -52,13 +53,13 @@ All claim decoding by decorators is **local** — no I/O.
 
 ## Guards
 
-| Guard | Validates | When to use |
-|---|---|---|
-| `B2CGuard` | `X-Access-Token` present | Route exclusively for users via Kong |
-| `B2BGuard` | `Authorization` via Keycloak introspection | Route exclusively for internal services |
-| `ApiAuthGuard` | Detects path and delegates | Route reachable by both paths |
-| `RolesGuard` | Roles from the correct JWT | Always paired with a guard above |
-| `BearerTokenGuard` | `Authorization` via introspection | Lower-level; prefer `B2BGuard` |
+| Guard              | Validates                                  | When to use                             |
+| ------------------ | ------------------------------------------ | --------------------------------------- |
+| `B2CGuard`         | `X-Access-Token` present                   | Route exclusively for users via Kong    |
+| `B2BGuard`         | `Authorization` via Keycloak introspection | Route exclusively for internal services |
+| `ApiAuthGuard`     | Detects path and delegates                 | Route reachable by both paths           |
+| `RolesGuard`       | Roles from the correct JWT                 | Always paired with a guard above        |
+| `BearerTokenGuard` | `Authorization` via introspection          | Lower-level; prefer `B2BGuard`          |
 
 **Guard order matters** — authentication guards must run before `RolesGuard`.
 
@@ -67,6 +68,7 @@ All claim decoding by decorators is **local** — no I/O.
 ## Decorators
 
 ### `@AuthUser(param?)`
+
 Extracts a claim from `X-Access-Token` (B2C token). Default claim: configured `userId` (default: `sub`).
 
 ```ts
@@ -77,6 +79,7 @@ Extracts a claim from `X-Access-Token` (B2C token). Default claim: configured `u
 ```
 
 ### `@CallerToken(param?)`
+
 Extracts a claim from `Authorization` (B2B token). Default claim: configured `callerId` (default: `azp`).
 
 ```ts
@@ -87,6 +90,7 @@ Extracts a claim from `Authorization` (B2B token). Default claim: configured `ca
 ```
 
 ### `@AccessToken(header?)`
+
 Returns the raw JWT string from the B2C header. Use for non-string claims or when forwarding the token.
 
 ```ts
@@ -95,6 +99,7 @@ Returns the raw JWT string from the B2C header. Use for non-string claims or whe
 ```
 
 ### `@Roles(...)`
+
 Declares required roles. Always used with `RolesGuard`.
 
 ```ts
@@ -108,6 +113,7 @@ Declares required roles. Always used with `RolesGuard`.
 ## Examples
 
 ### B2C — user via Kong
+
 ```typescript
 @Get('me')
 @Roles('user-manager')
@@ -123,6 +129,7 @@ async getMe(
 ```
 
 ### B2B — internal service
+
 ```typescript
 @Post('internal/notify')
 @Roles('send-notifications')
@@ -135,6 +142,7 @@ async notify(
 ```
 
 ### Both paths (ApiAuthGuard)
+
 ```typescript
 @Get(':id')
 @Roles('user-manager')
@@ -147,6 +155,7 @@ async findById(
 ```
 
 ### Custom header per-route
+
 ```typescript
 @Get('special')
 @UseGuards(B2CGuard)
@@ -164,3 +173,5 @@ async special(
 - **B2CGuard checks presence** of `X-Access-Token`, not validity — Kong is the validator.
 - **No `X-User-Id` or `X-User-Roles` shortcuts** — all user data comes from the JWT in `X-Access-Token`.
 - **When adding a new public feature**: register in `KeycloakModule`, export in `src/index.ts`, cover with tests, update README and changeset.
+- **Structured logs**: use `@adatechnology/logger` always with payload object (`message`, `context`, `meta`) and prefer `context` from `this.constructor.name` inside classes.
+- **Type naming**: tipos com sufixo `Params`/`Result` devem seguir **PascalCase**.

@@ -9,9 +9,11 @@ import {
   LOGGER_PROVIDER,
   LoggerProviderInterface,
 } from "@adatechnology/logger";
-import { InMemoryCacheProvider } from "@adatechnology/cache";
-import type { CacheProviderInterface } from "@adatechnology/cache";
-import { CACHE_PROVIDER } from "@adatechnology/cache";
+import {
+  CACHE_PROVIDER,
+  InMemoryCacheProvider,
+  type CacheProviderInterface,
+} from "@adatechnology/cache";
 
 import type {
   KeycloakClientInterface,
@@ -50,7 +52,7 @@ export class KeycloakClient implements KeycloakClientInterface {
   ) {
     if (!this.logger) return;
 
-    const loggerCtx = getContext() as Record<string, unknown> | undefined;
+    const loggerCtx = getContext();
     const httpCtx = getHttpRequestContext();
 
     const logContext = loggerCtx?.logContext as
@@ -59,12 +61,12 @@ export class KeycloakClient implements KeycloakClientInterface {
     const requestId =
       (loggerCtx?.requestId as string | undefined) ?? httpCtx?.requestId;
 
-    const source =
-      logContext?.className && logContext?.methodName
-        ? `${logContext.className}.${logContext.methodName}`
-        : httpCtx?.className && httpCtx?.methodName
-          ? `${httpCtx.className}.${httpCtx.methodName}`
-          : undefined;
+    let source: string | undefined;
+    if (logContext?.className && logContext?.methodName) {
+      source = `${logContext.className}.${logContext.methodName}`;
+    } else if (httpCtx?.className && httpCtx?.methodName) {
+      source = `${httpCtx.className}.${httpCtx.methodName}`;
+    }
 
     const payload = {
       message,
@@ -96,7 +98,7 @@ export class KeycloakClient implements KeycloakClientInterface {
       return cached;
     }
 
-    if (this.tokenPromise) {
+    if (this.tokenPromise !== null && this.tokenPromise !== undefined) {
       this.log(
         "debug",
         `${method} - Waiting for existing token request`,

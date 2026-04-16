@@ -41,6 +41,16 @@ import {
 export class BearerTokenGuard implements CanActivate {
   private readonly className = this.constructor.name;
 
+  private getErrorDetail(error: unknown): string {
+    if (error instanceof Error) return error.message;
+    if (typeof error === "string") return error;
+    try {
+      return JSON.stringify(error);
+    } catch {
+      return "unknown error";
+    }
+  }
+
   constructor(
     @Optional()
     @Inject(KEYCLOAK_CLIENT)
@@ -58,7 +68,7 @@ export class BearerTokenGuard implements CanActivate {
   ) {
     if (!this.logger) return;
 
-    const loggerCtx = getContext() as Record<string, unknown> | undefined;
+    const loggerCtx = getContext();
     const httpCtx = getHttpRequestContext();
 
     const logContext = loggerCtx?.logContext as
@@ -67,12 +77,12 @@ export class BearerTokenGuard implements CanActivate {
     const requestId =
       (loggerCtx?.requestId as string | undefined) ?? httpCtx?.requestId;
 
-    const source =
-      logContext?.className && logContext?.methodName
-        ? `${logContext.className}.${logContext.methodName}`
-        : httpCtx?.className && httpCtx?.methodName
-          ? `${httpCtx.className}.${httpCtx.methodName}`
-          : undefined;
+    let source: string | undefined;
+    if (logContext?.className && logContext?.methodName) {
+      source = `${logContext.className}.${logContext.methodName}`;
+    } else if (httpCtx?.className && httpCtx?.methodName) {
+      source = `${httpCtx.className}.${httpCtx.methodName}`;
+    }
 
     const payload = {
       message,
@@ -129,7 +139,7 @@ export class BearerTokenGuard implements CanActivate {
     try {
       isValid = await this.keycloakClient.validateToken(token);
     } catch (err: unknown) {
-      const detail = err instanceof Error ? err.message : String(err);
+      const detail = this.getErrorDetail(err);
       this.log("error", `${method} - Token validation failed`, method, {
         detail,
       });

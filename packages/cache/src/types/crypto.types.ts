@@ -1,9 +1,9 @@
-export type encryptParams = {
+export type EncryptParams = {
   plaintext: string;
   secret: string;
 };
 
-export type decryptParams = {
+export type DecryptParams = {
   encoded: string;
   secret: string;
 };

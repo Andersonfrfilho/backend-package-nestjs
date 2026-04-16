@@ -1,5 +1,15 @@
 import { Injectable, Inject } from "@nestjs/common";
-import type { LoggerProviderInterface, LogPayload } from "./logger.interface";
+import type {
+  DebugParams,
+  DebugResult,
+  ErrorParams,
+  ErrorResult,
+  InfoParams,
+  InfoResult,
+  LoggerProviderInterface,
+  WarnParams,
+  WarnResult,
+} from "./logger.interface";
 import { WINSTON_LOGGER } from "./implementations/winston/winston.logger.token";
 
 @Injectable()
@@ -9,45 +19,24 @@ export class LoggerProvider implements LoggerProviderInterface {
     private readonly implementation: LoggerProviderInterface,
   ) {}
 
-  debug(payload: LogPayload): void;
-  debug(
-    message: string,
-    meta?: Record<string, unknown>,
-    context?: string,
-  ): void;
-  debug(...args: unknown[]): void {
-    // @ts-ignore - delegate to implementation which supports overloads
-    return this.implementation.debug(...(args as any));
+  debug(params: DebugParams): DebugResult {
+    return this.implementation.debug(params);
   }
 
-  info(payload: LogPayload): void;
-  info(message: string, meta?: Record<string, unknown>, context?: string): void;
-  info(...args: unknown[]): void {
-    // @ts-ignore
-    return this.implementation.info(...(args as any));
+  info(params: InfoParams): InfoResult {
+    return this.implementation.info(params);
   }
 
-  warn(payload: LogPayload): void;
-  warn(message: string, meta?: Record<string, unknown>, context?: string): void;
-  warn(...args: unknown[]): void {
-    // @ts-ignore
-    return this.implementation.warn(...(args as any));
+  warn(params: WarnParams): WarnResult {
+    return this.implementation.warn(params);
   }
 
-  error(payload: LogPayload): void;
-  error(
-    message: string,
-    meta?: Record<string, unknown>,
-    context?: string,
-  ): void;
-  error(...args: unknown[]): void {
-    // @ts-ignore
-    return this.implementation.error(...(args as any));
+  error(params: ErrorParams): ErrorResult {
+    return this.implementation.error(params);
   }
   setContext?(context: string): void {
     if (typeof this.implementation.setContext === "function") {
       return this.implementation.setContext(context);
     }
-    return;
   }
 }
