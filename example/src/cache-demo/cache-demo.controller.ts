@@ -25,7 +25,11 @@ export class CacheDemoController {
 
   /** Propagates logContext via AsyncLocalStorage so cache logs show the originating method */
   private withCtx<T>(logContext: object, fn: () => Promise<T>): Promise<T> {
-    return runWithContext({ ...(getContext() ?? {}), logContext }, fn);
+    const currentContext = getContext();
+    return runWithContext(
+      currentContext ? { ...currentContext, logContext } : { logContext },
+      fn,
+    );
   }
 
   /**
