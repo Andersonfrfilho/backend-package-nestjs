@@ -1,15 +1,23 @@
-import { Injectable, OnModuleDestroy } from '@nestjs/common';
-import { getContext, LoggerProviderInterface } from '@adatechnology/logger';
-import Redis, { RedisOptions } from 'ioredis';
+import { Injectable, OnModuleDestroy } from "@nestjs/common";
+import { getContext, LoggerProviderInterface } from "@adatechnology/logger";
+import Redis, { RedisOptions } from "ioredis";
 
-import { CacheProviderInterface } from '../cache.interface';
-import { LIB_NAME, LIB_VERSION, LOG_CONTEXT } from '../cache.constants';
-import { decrypt, encrypt } from '../crypto.utils';
-
-const CONTEXT = LOG_CONTEXT.REDIS_CACHE_PROVIDER;
+import {
+  CacheProviderInterface,
+  delParams,
+  getEncryptedParams,
+  getParams,
+  setEncryptedParams,
+  setParams,
+} from "../cache.interface";
+import { LIB_NAME, LIB_VERSION } from "../cache.constants";
+import { decrypt, encrypt } from "../crypto.utils";
 
 @Injectable()
-export class RedisCacheProvider implements CacheProviderInterface, OnModuleDestroy {
+export class RedisCacheProvider
+  implements CacheProviderInterface, OnModuleDestroy
+{
+  private readonly className = this.constructor.name;
   private readonly redis: Redis;
 
   constructor(
@@ -25,93 +33,147 @@ export class RedisCacheProvider implements CacheProviderInterface, OnModuleDestr
     return ctx?.logContext as Record<string, unknown> | undefined;
   }
 
-  async get<T>(key: string): Promise<T | null> {
-    const libMethod = `${CONTEXT}.get`;
+  async get<T>({ key }: getParams): Promise<T | null> {
+    const libMethod = `${this.className}.get`;
     const value = await this.redis.get(key);
 
     if (!value) {
       this.logger?.debug?.({
         message: `Cache miss: ${key}`,
-        context: CONTEXT,
-        meta: { key, hit: false, lib: LIB_NAME, libVersion: LIB_VERSION, libMethod, logContext: this.callerLogContext() },
+        context: this.className,
+        meta: {
+          key,
+          hit: false,
+          lib: LIB_NAME,
+          libVersion: LIB_VERSION,
+          libMethod,
+          logContext: this.callerLogContext(),
+        },
       });
       return null;
     }
 
     this.logger?.debug?.({
       message: `Cache hit: ${key}`,
-      context: CONTEXT,
-      meta: { key, hit: true, lib: LIB_NAME, libVersion: LIB_VERSION, libMethod, logContext: this.callerLogContext() },
+      context: this.className,
+      meta: {
+        key,
+        hit: true,
+        lib: LIB_NAME,
+        libVersion: LIB_VERSION,
+        libMethod,
+        logContext: this.callerLogContext(),
+      },
     });
     return JSON.parse(value) as T;
   }
 
-  async set<T>(key: string, value: T, ttlInSeconds?: number): Promise<void> {
-    const libMethod = `${CONTEXT}.set`;
+  async set<T>({ key, value, ttlInSeconds }: setParams<T>): Promise<void> {
+    const libMethod = `${this.className}.set`;
     const stringifiedValue = JSON.stringify(value);
 
     if (ttlInSeconds) {
-      await this.redis.set(key, stringifiedValue, 'EX', ttlInSeconds);
+      await this.redis.set(key, stringifiedValue, "EX", ttlInSeconds);
     } else {
       await this.redis.set(key, stringifiedValue);
     }
 
     this.logger?.debug?.({
       message: `Cache set: ${key}`,
-      context: CONTEXT,
-      meta: { key, ttlInSeconds: ttlInSeconds ?? null, lib: LIB_NAME, libVersion: LIB_VERSION, libMethod, logContext: this.callerLogContext() },
+      context: this.className,
+      meta: {
+        key,
+        ttlInSeconds: ttlInSeconds ?? null,
+        lib: LIB_NAME,
+        libVersion: LIB_VERSION,
+        libMethod,
+        logContext: this.callerLogContext(),
+      },
     });
   }
 
-  async del(key: string): Promise<void> {
-    const libMethod = `${CONTEXT}.del`;
+  async del({ key }: delParams): Promise<void> {
+    const libMethod = `${this.className}.del`;
     await this.redis.del(key);
     this.logger?.debug?.({
       message: `Cache del: ${key}`,
-      context: CONTEXT,
-      meta: { key, lib: LIB_NAME, libVersion: LIB_VERSION, libMethod, logContext: this.callerLogContext() },
+      context: this.className,
+      meta: {
+        key,
+        lib: LIB_NAME,
+        libVersion: LIB_VERSION,
+        libMethod,
+        logContext: this.callerLogContext(),
+      },
     });
   }
 
   async clear(): Promise<void> {
-    const libMethod = `${CONTEXT}.clear`;
+    const libMethod = `${this.className}.clear`;
     await this.redis.flushall();
     this.logger?.info?.({
-      message: 'Cache cleared (flushall)',
-      context: CONTEXT,
-      meta: { lib: LIB_NAME, libVersion: LIB_VERSION, libMethod, logContext: this.callerLogContext() },
+      message: "Cache cleared (flushall)",
+      context: this.className,
+      meta: {
+        lib: LIB_NAME,
+        libVersion: LIB_VERSION,
+        libMethod,
+        logContext: this.callerLogContext(),
+      },
     });
   }
 
-  async setEncrypted<T>(key: string, value: T, ttlInSeconds?: number, secret?: string): Promise<void> {
-    const libMethod = `${CONTEXT}.setEncrypted`;
+  async setEncrypted<T>({
+    key,
+    value,
+    ttlInSeconds,
+    secret,
+  }: setEncryptedParams<T>): Promise<void> {
+    const libMethod = `${this.className}.setEncrypted`;
     const resolvedSecret = secret ?? this.encryptionSecret;
 
     if (!resolvedSecret) {
-      throw new Error(`[${LIB_NAME}] setEncrypted: no encryption secret provided. Pass a secret or set encryptionSecret in the constructor.`);
+      throw new Error(
+        `[${LIB_NAME}] setEncrypted: no encryption secret provided. Pass a secret or set encryptionSecret in the constructor.`,
+      );
     }
 
-    const ciphertext = encrypt(JSON.stringify(value), resolvedSecret);
+    const ciphertext = encrypt({
+      plaintext: JSON.stringify(value),
+      secret: resolvedSecret,
+    });
 
     if (ttlInSeconds) {
-      await this.redis.set(key, ciphertext, 'EX', ttlInSeconds);
+      await this.redis.set(key, ciphertext, "EX", ttlInSeconds);
     } else {
       await this.redis.set(key, ciphertext);
     }
 
     this.logger?.debug?.({
       message: `Cache setEncrypted: ${key}`,
-      context: CONTEXT,
-      meta: { key, ttlInSeconds: ttlInSeconds ?? null, lib: LIB_NAME, libVersion: LIB_VERSION, libMethod, logContext: this.callerLogContext() },
+      context: this.className,
+      meta: {
+        key,
+        ttlInSeconds: ttlInSeconds ?? null,
+        lib: LIB_NAME,
+        libVersion: LIB_VERSION,
+        libMethod,
+        logContext: this.callerLogContext(),
+      },
     });
   }
 
-  async getEncrypted<T>(key: string, secret?: string): Promise<T | null> {
-    const libMethod = `${CONTEXT}.getEncrypted`;
+  async getEncrypted<T>({
+    key,
+    secret,
+  }: getEncryptedParams): Promise<T | null> {
+    const libMethod = `${this.className}.getEncrypted`;
     const resolvedSecret = secret ?? this.encryptionSecret;
 
     if (!resolvedSecret) {
-      throw new Error(`[${LIB_NAME}] getEncrypted: no encryption secret provided. Pass a secret or set encryptionSecret in the constructor.`);
+      throw new Error(
+        `[${LIB_NAME}] getEncrypted: no encryption secret provided. Pass a secret or set encryptionSecret in the constructor.`,
+      );
     }
 
     const ciphertext = await this.redis.get(key);
@@ -119,25 +181,48 @@ export class RedisCacheProvider implements CacheProviderInterface, OnModuleDestr
     if (!ciphertext) {
       this.logger?.debug?.({
         message: `Cache miss (encrypted): ${key}`,
-        context: CONTEXT,
-        meta: { key, hit: false, lib: LIB_NAME, libVersion: LIB_VERSION, libMethod, logContext: this.callerLogContext() },
+        context: this.className,
+        meta: {
+          key,
+          hit: false,
+          lib: LIB_NAME,
+          libVersion: LIB_VERSION,
+          libMethod,
+          logContext: this.callerLogContext(),
+        },
       });
       return null;
     }
 
     try {
-      const plaintext = decrypt(ciphertext, resolvedSecret);
+      const plaintext = decrypt({
+        encoded: ciphertext,
+        secret: resolvedSecret,
+      });
       this.logger?.debug?.({
         message: `Cache hit (encrypted): ${key}`,
-        context: CONTEXT,
-        meta: { key, hit: true, lib: LIB_NAME, libVersion: LIB_VERSION, libMethod, logContext: this.callerLogContext() },
+        context: this.className,
+        meta: {
+          key,
+          hit: true,
+          lib: LIB_NAME,
+          libVersion: LIB_VERSION,
+          libMethod,
+          logContext: this.callerLogContext(),
+        },
       });
       return JSON.parse(plaintext) as T;
     } catch {
       this.logger?.warn?.({
         message: `Cache decryption failed: ${key}`,
-        context: CONTEXT,
-        meta: { key, lib: LIB_NAME, libVersion: LIB_VERSION, libMethod, logContext: this.callerLogContext() },
+        context: this.className,
+        meta: {
+          key,
+          lib: LIB_NAME,
+          libVersion: LIB_VERSION,
+          libMethod,
+          logContext: this.callerLogContext(),
+        },
       });
       return null;
     }

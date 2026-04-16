@@ -6,79 +6,115 @@ import {
 import type { ErrorContext } from "./errors.interfaces";
 
 export class ErrorMapperService {
+  private toSafeString(value: unknown): string {
+    if (typeof value === "string") return value;
+    if (value instanceof Error) return value.message;
+    try {
+      return JSON.stringify(value);
+    } catch {
+      return "unknown error";
+    }
+  }
+
+  private isAlreadyMapped(err: unknown): boolean {
+    if (!err || typeof err !== "object") return false;
+    const candidate = err as Record<string, unknown>;
+    return candidate.status !== undefined && candidate.message !== undefined;
+  }
+
+  private buildContext(obj: Record<string, unknown>): ErrorContext {
+    const context: ErrorContext = {};
+
+    if (obj?.config && typeof obj.config === "object") {
+      const cfg = obj.config as Record<string, unknown>;
+      context.url =
+        (typeof cfg.url === "string" ? cfg.url : undefined) ||
+        (typeof cfg.baseURL === "string" ? cfg.baseURL : undefined);
+      context.method = typeof cfg.method === "string" ? cfg.method : undefined;
+    }
+
+    if (obj?.stack && typeof obj.stack === "string") {
+      const frames = this.parseStack(obj.stack);
+      if (frames.length) {
+        context.stack = frames as unknown as ErrorContext["stack"];
+        const origin = frames.find((f) => !this.isInternalFrame(f.file));
+        if (origin) {
+          context.origin = origin as unknown as ErrorContext["origin"];
+        }
+      }
+    }
+
+    return context;
+  }
+
+  private mapFromResponse(
+    obj: Record<string, unknown>,
+    context: ErrorContext,
+  ): {
+    message: unknown;
+    status: number;
+    code: string | undefined;
+    context: ErrorContext;
+  } | null {
+    if (!obj?.response || typeof obj.response !== "object") {
+      return null;
+    }
+
+    const resp = obj.response as Record<string, unknown>;
+    const status =
+      typeof resp.status === "number"
+        ? resp.status
+        : HTTP_ERRORS.DEFAULT_STATUS;
+
+    const message =
+      (resp.data && (resp.data as Record<string, unknown>).message) ||
+      obj.message ||
+      HTTP_ERROR_MESSAGES.UPSTREAM_ERROR;
+
+    return {
+      message,
+      status,
+      code: typeof obj.code === "string" ? obj.code : undefined,
+      context: {
+        ...context,
+        data: resp.data,
+      },
+    };
+  }
+
   mapUpstreamError(err: unknown) {
-    if (
-      err &&
-      typeof (err as Record<string, unknown>).status !== "undefined" &&
-      typeof (err as Record<string, unknown>).message !== "undefined"
-    )
+    if (this.isAlreadyMapped(err)) {
       return err;
+    }
 
     try {
       const obj = (err as Record<string, unknown>) ?? {};
-      const context: ErrorContext = {};
+      const context = this.buildContext(obj);
 
-      if (obj?.config && typeof obj.config === "object") {
-        const cfg = obj.config as Record<string, unknown>;
-        context.url = (cfg.url as string) || (cfg.baseURL as string);
-        context.method = cfg.method as string | undefined;
-      }
-
-      if (obj?.stack && typeof obj.stack === "string") {
-        const frames = this.parseStack(obj.stack);
-        if (frames.length) {
-          context.stack = frames as unknown as ErrorContext["stack"];
-          const origin = frames.find((f) => !this.isInternalFrame(f.file));
-          if (origin)
-            context.origin = origin as unknown as ErrorContext["origin"];
-        }
-      }
-
-      if (obj?.response && typeof obj.response === "object") {
-        const resp = obj.response as Record<string, unknown>;
-        const status =
-          typeof resp.status === "number"
-            ? (resp.status as number)
-            : HTTP_ERRORS.DEFAULT_STATUS;
-        const message =
-          (resp.data &&
-            ((resp.data as Record<string, unknown>).message as string)) ||
-          (obj.message as string) ||
-          HTTP_ERROR_MESSAGES.UPSTREAM_ERROR;
-        return {
-          message,
-          status,
-          code: obj.code as string | undefined,
-          context: {
-            ...context,
-            data: resp.data,
-          },
-        };
-      }
+      const mappedResponse = this.mapFromResponse(obj, context);
+      if (mappedResponse) return mappedResponse;
 
       if (obj?.request) {
         return {
           message: HTTP_ERROR_MESSAGES.NO_RESPONSE,
           status: HTTP_ERRORS.DEFAULT_STATUS,
-          code: obj.code as string | undefined,
+          code: typeof obj.code === "string" ? obj.code : undefined,
           context,
         };
       }
 
       return {
-        message:
-          (obj && (obj.message as string)) ||
-          HTTP_ERROR_MESSAGES.UNEXPECTED_ERROR,
+        message: obj?.message || HTTP_ERROR_MESSAGES.UNEXPECTED_ERROR,
         status: HTTP_ERRORS.INTERNAL_STATUS,
-        code: obj?.code as string | undefined,
+        code: typeof obj.code === "string" ? obj.code : undefined,
         context,
       };
-    } catch (e) {
+    } catch {
       return {
         message: HTTP_ERROR_MESSAGES.MAPPING_FAILURE,
         status: HTTP_ERRORS.INTERNAL_STATUS,
         code: undefined,
-        context: { original: String(err) },
+        context: { original: this.toSafeString(err) },
       };
     }
   }
@@ -100,8 +136,8 @@ export class ErrorMapperService {
       if (m) {
         const fn = m[1] || undefined;
         const file = m[2];
-        const lineNum = parseInt(m[3], 10);
-        const colNum = parseInt(m[4], 10);
+        const lineNum = Number.parseInt(m[3], 10);
+        const colNum = Number.parseInt(m[4], 10);
         frames.push({ fn, file, line: lineNum, column: colNum });
       }
     }

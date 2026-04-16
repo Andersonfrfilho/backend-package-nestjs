@@ -1,4 +1,10 @@
-import { CanActivate, ExecutionContext, Inject, Injectable, Optional } from "@nestjs/common";
+import {
+  CanActivate,
+  ExecutionContext,
+  Inject,
+  Injectable,
+  Optional,
+} from "@nestjs/common";
 import { getContext, LOGGER_PROVIDER } from "@adatechnology/logger";
 import type { LoggerProviderInterface } from "@adatechnology/logger";
 import { getHttpRequestContext } from "@adatechnology/http-client";
@@ -11,7 +17,6 @@ import {
   HTTP_STATUS,
   LIB_NAME,
   LIB_VERSION,
-  LOG_CONTEXT,
 } from "./keycloak.constants";
 
 /**
@@ -34,6 +39,8 @@ import {
  */
 @Injectable()
 export class BearerTokenGuard implements CanActivate {
+  private readonly className = this.constructor.name;
+
   constructor(
     @Optional()
     @Inject(KEYCLOAK_CLIENT)
@@ -69,7 +76,7 @@ export class BearerTokenGuard implements CanActivate {
 
     const payload = {
       message,
-      context: LOG_CONTEXT.BEARER_TOKEN_GUARD,
+      context: this.className,
       lib: LIB_NAME,
       libVersion: LIB_VERSION,
       libMethod,
@@ -93,7 +100,11 @@ export class BearerTokenGuard implements CanActivate {
       request.headers?.authorization ?? request.headers?.Authorization;
 
     if (!authorization?.startsWith("Bearer ")) {
-      this.log("warn", `${method} - Missing or invalid Authorization header`, method);
+      this.log(
+        "warn",
+        `${method} - Missing or invalid Authorization header`,
+        method,
+      );
       throw new BaseAppError({
         message: "Missing or invalid Authorization header",
         status: HTTP_STATUS.UNAUTHORIZED,
@@ -119,7 +130,9 @@ export class BearerTokenGuard implements CanActivate {
       isValid = await this.keycloakClient.validateToken(token);
     } catch (err: unknown) {
       const detail = err instanceof Error ? err.message : String(err);
-      this.log("error", `${method} - Token validation failed`, method, { detail });
+      this.log("error", `${method} - Token validation failed`, method, {
+        detail,
+      });
       throw new BaseAppError({
         message: "Token validation failed",
         status: HTTP_STATUS.UNAUTHORIZED,

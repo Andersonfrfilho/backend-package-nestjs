@@ -3,14 +3,14 @@ import { Observable } from "rxjs";
 
 import {
   ErrorInterceptor,
+  HttpConfigWithoutUrlAndMethod,
+  HttpConfigWithoutUrlMethodAndData,
   HttpProviderInterface,
   HttpRequestConfig,
   HttpResponse,
 } from "./http.interface";
 import type { AxiosHttpProviderInterface } from "./implementations/axios/axios.http.interfaces";
 import {
-  UrlConfig,
-  UrlDataConfig,
   SetGlobalHeaderParams,
   SetAuthTokenParams,
 } from "./implementations/axios/types/axios.http.params";
@@ -27,7 +27,7 @@ export class HttpProvider implements HttpProviderInterface {
    * Expose underlying axios instance when available from the axios provider implementation.
    * This is intentionally typed as unknown/any to avoid leaking implementation details.
    */
-  getAxiosInstance(): unknown | undefined {
+  getAxiosInstance(): unknown {
     try {
       // Some implementations expose `axiosInstance` or `instance`.
       // Use brute-force access guarded in try/catch to avoid runtime errors.
@@ -36,24 +36,22 @@ export class HttpProvider implements HttpProviderInterface {
         string,
         unknown
       >;
-      return (provider?.axiosInstance ?? provider?.instance) as
-        | unknown
-        | undefined;
-    } catch (e) {
+      return provider?.axiosInstance ?? provider?.instance;
+    } catch {
       return undefined;
     }
   }
 
   get<T>(params: {
     url: string;
-    config?: Omit<HttpRequestConfig, "url" | "method">;
+    config?: HttpConfigWithoutUrlAndMethod;
   }): Promise<HttpResponse<T>> {
     return this.axiosHttpProvider.get<T>(params);
   }
 
   get$<T>(params: {
     url: string;
-    config?: Omit<HttpRequestConfig, "url" | "method">;
+    config?: HttpConfigWithoutUrlAndMethod;
   }): Observable<HttpResponse<T>> {
     return this.axiosHttpProvider.get$<T>(params);
   }
@@ -61,7 +59,7 @@ export class HttpProvider implements HttpProviderInterface {
   post<T>(params: {
     url: string;
     data?: unknown;
-    config?: Omit<HttpRequestConfig, "url" | "method" | "data">;
+    config?: HttpConfigWithoutUrlMethodAndData;
   }): Promise<HttpResponse<T>> {
     return this.axiosHttpProvider.post<T>(params);
   }
@@ -69,7 +67,7 @@ export class HttpProvider implements HttpProviderInterface {
   post$<T>(params: {
     url: string;
     data?: unknown;
-    config?: Omit<HttpRequestConfig, "url" | "method" | "data">;
+    config?: HttpConfigWithoutUrlMethodAndData;
   }): Observable<HttpResponse<T>> {
     return this.axiosHttpProvider.post$<T>(params);
   }
@@ -77,7 +75,7 @@ export class HttpProvider implements HttpProviderInterface {
   put<T>(params: {
     url: string;
     data?: unknown;
-    config?: Omit<HttpRequestConfig, "url" | "method" | "data">;
+    config?: HttpConfigWithoutUrlMethodAndData;
   }): Promise<HttpResponse<T>> {
     return this.axiosHttpProvider.put<T>(params);
   }
@@ -85,7 +83,7 @@ export class HttpProvider implements HttpProviderInterface {
   put$<T>(params: {
     url: string;
     data?: unknown;
-    config?: Omit<HttpRequestConfig, "url" | "method" | "data">;
+    config?: HttpConfigWithoutUrlMethodAndData;
   }): Observable<HttpResponse<T>> {
     return this.axiosHttpProvider.put$<T>(params);
   }
@@ -93,7 +91,7 @@ export class HttpProvider implements HttpProviderInterface {
   patch<T>(params: {
     url: string;
     data?: unknown;
-    config?: Omit<HttpRequestConfig, "url" | "method" | "data">;
+    config?: HttpConfigWithoutUrlMethodAndData;
   }): Promise<HttpResponse<T>> {
     return this.axiosHttpProvider.patch<T>(params);
   }
@@ -101,49 +99,49 @@ export class HttpProvider implements HttpProviderInterface {
   patch$<T>(params: {
     url: string;
     data?: unknown;
-    config?: Omit<HttpRequestConfig, "url" | "method" | "data">;
+    config?: HttpConfigWithoutUrlMethodAndData;
   }): Observable<HttpResponse<T>> {
     return this.axiosHttpProvider.patch$<T>(params);
   }
 
   delete<T>(params: {
     url: string;
-    config?: Omit<HttpRequestConfig, "url" | "method">;
+    config?: HttpConfigWithoutUrlAndMethod;
   }): Promise<HttpResponse<T>> {
     return this.axiosHttpProvider.delete<T>(params);
   }
 
   delete$<T>(params: {
     url: string;
-    config?: Omit<HttpRequestConfig, "url" | "method">;
+    config?: HttpConfigWithoutUrlAndMethod;
   }): Observable<HttpResponse<T>> {
     return this.axiosHttpProvider.delete$<T>(params);
   }
 
   head<T>(params: {
     url: string;
-    config?: Omit<HttpRequestConfig, "url" | "method">;
+    config?: HttpConfigWithoutUrlAndMethod;
   }): Promise<HttpResponse<T>> {
     return this.axiosHttpProvider.head<T>(params);
   }
 
   head$<T>(params: {
     url: string;
-    config?: Omit<HttpRequestConfig, "url" | "method">;
+    config?: HttpConfigWithoutUrlAndMethod;
   }): Observable<HttpResponse<T>> {
     return this.axiosHttpProvider.head$<T>(params);
   }
 
   options<T>(params: {
     url: string;
-    config?: Omit<HttpRequestConfig, "url" | "method">;
+    config?: HttpConfigWithoutUrlAndMethod;
   }): Promise<HttpResponse<T>> {
     return this.axiosHttpProvider.options<T>(params);
   }
 
   options$<T>(params: {
     url: string;
-    config?: Omit<HttpRequestConfig, "url" | "method">;
+    config?: HttpConfigWithoutUrlAndMethod;
   }): Observable<HttpResponse<T>> {
     return this.axiosHttpProvider.options$<T>(params);
   }
@@ -163,9 +161,14 @@ export class HttpProvider implements HttpProviderInterface {
     value?: string,
   ): void {
     if (typeof keyOrParams === "string") {
+      if (value === undefined) {
+        throw new Error(
+          "setGlobalHeader: value is required when key is a string",
+        );
+      }
       this.axiosHttpProvider.setGlobalHeader({
         key: keyOrParams,
-        value: value!,
+        value,
       });
       return;
     }
@@ -201,8 +204,8 @@ export class HttpProvider implements HttpProviderInterface {
     this.axiosHttpProvider.removeErrorInterceptor(id);
   }
 
-  clearCache(key?: string): void {
-    this.axiosHttpProvider.clearCache(key);
+  async clearCache(key?: string): Promise<void> {
+    await this.axiosHttpProvider.clearCache(key);
   }
 
   setAuthToken(params: { token: string; type?: string }): void;

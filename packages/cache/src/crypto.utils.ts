@@ -1,9 +1,17 @@
-import { createCipheriv, createDecipheriv, randomBytes, scryptSync } from 'node:crypto';
+import {
+  createCipheriv,
+  createDecipheriv,
+  randomBytes,
+  scryptSync,
+} from "node:crypto";
 
-const ALGORITHM = 'aes-256-gcm';
-const IV_LENGTH = 12;   // 96-bit IV recommended for GCM
-const TAG_LENGTH = 16;  // 128-bit auth tag
-const SALT = 'adatechnology-cache-v1'; // fixed salt — key derivation makes secret length-agnostic
+import {
+  ALGORITHM,
+  IV_LENGTH,
+  SALT,
+  TAG_LENGTH,
+} from "./constants/crypto.constants";
+import type { decryptParams, encryptParams } from "./types/crypto.types";
 
 /**
  * Derives a 32-byte key from an arbitrary-length secret using scrypt.
@@ -16,24 +24,27 @@ function deriveKey(secret: string): Buffer {
  * Encrypts `plaintext` using AES-256-GCM.
  * Returns a base64 string: iv(12) + tag(16) + ciphertext
  */
-export function encrypt(plaintext: string, secret: string): string {
+export function encrypt({ plaintext, secret }: encryptParams): string {
   const key = deriveKey(secret);
   const iv = randomBytes(IV_LENGTH);
   const cipher = createCipheriv(ALGORITHM, key, iv);
 
-  const encrypted = Buffer.concat([cipher.update(plaintext, 'utf8'), cipher.final()]);
+  const encrypted = Buffer.concat([
+    cipher.update(plaintext, "utf8"),
+    cipher.final(),
+  ]);
   const tag = cipher.getAuthTag();
 
-  return Buffer.concat([iv, tag, encrypted]).toString('base64');
+  return Buffer.concat([iv, tag, encrypted]).toString("base64");
 }
 
 /**
  * Decrypts a base64 string produced by `encrypt`.
  * Throws if the auth tag is invalid (tampered data).
  */
-export function decrypt(encoded: string, secret: string): string {
+export function decrypt({ encoded, secret }: decryptParams): string {
   const key = deriveKey(secret);
-  const data = Buffer.from(encoded, 'base64');
+  const data = Buffer.from(encoded, "base64");
 
   const iv = data.subarray(0, IV_LENGTH);
   const tag = data.subarray(IV_LENGTH, IV_LENGTH + TAG_LENGTH);
@@ -42,5 +53,5 @@ export function decrypt(encoded: string, secret: string): string {
   const decipher = createDecipheriv(ALGORITHM, key, iv);
   decipher.setAuthTag(tag);
 
-  return decipher.update(ciphertext) + decipher.final('utf8');
+  return decipher.update(ciphertext) + decipher.final("utf8");
 }

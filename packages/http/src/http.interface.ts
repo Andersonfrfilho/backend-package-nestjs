@@ -174,6 +174,16 @@ export interface HttpError extends Error {
   isTimeout?: boolean;
 }
 
+export type HttpConfigWithoutUrlAndMethod = Omit<
+  HttpRequestConfig,
+  "url" | "method"
+>;
+
+export type HttpConfigWithoutUrlMethodAndData = Omit<
+  HttpRequestConfig,
+  "url" | "method" | "data"
+>;
+
 /**
  * Error interceptor function
  */
@@ -188,7 +198,7 @@ export interface HttpProviderInterface {
    */
   get<T = unknown>(params: {
     url: string;
-    config?: Omit<HttpRequestConfig, "url" | "method">;
+    config?: HttpConfigWithoutUrlAndMethod;
   }): Promise<HttpResponse<T>>;
 
   /**
@@ -197,7 +207,7 @@ export interface HttpProviderInterface {
   post<T = unknown>(params: {
     url: string;
     data?: unknown;
-    config?: Omit<HttpRequestConfig, "url" | "method" | "data">;
+    config?: HttpConfigWithoutUrlMethodAndData;
   }): Promise<HttpResponse<T>>;
 
   /**
@@ -206,7 +216,7 @@ export interface HttpProviderInterface {
   put<T = unknown>(params: {
     url: string;
     data?: unknown;
-    config?: Omit<HttpRequestConfig, "url" | "method" | "data">;
+    config?: HttpConfigWithoutUrlMethodAndData;
   }): Promise<HttpResponse<T>>;
 
   /**
@@ -215,7 +225,7 @@ export interface HttpProviderInterface {
   patch<T = unknown>(params: {
     url: string;
     data?: unknown;
-    config?: Omit<HttpRequestConfig, "url" | "method" | "data">;
+    config?: HttpConfigWithoutUrlMethodAndData;
   }): Promise<HttpResponse<T>>;
 
   /**
@@ -223,7 +233,7 @@ export interface HttpProviderInterface {
    */
   delete<T = unknown>(params: {
     url: string;
-    config?: Omit<HttpRequestConfig, "url" | "method">;
+    config?: HttpConfigWithoutUrlAndMethod;
   }): Promise<HttpResponse<T>>;
 
   /**
@@ -231,7 +241,7 @@ export interface HttpProviderInterface {
    */
   head<T = unknown>(params: {
     url: string;
-    config?: Omit<HttpRequestConfig, "url" | "method">;
+    config?: HttpConfigWithoutUrlAndMethod;
   }): Promise<HttpResponse<T>>;
 
   /**
@@ -239,7 +249,7 @@ export interface HttpProviderInterface {
    */
   options<T = unknown>(params: {
     url: string;
-    config?: Omit<HttpRequestConfig, "url" | "method">;
+    config?: HttpConfigWithoutUrlAndMethod;
   }): Promise<HttpResponse<T>>;
 
   /**
@@ -290,7 +300,7 @@ export interface HttpProviderInterface {
   /**
    * Clear cache for a specific key or all cache
    */
-  clearCache(key?: string): void;
+  clearCache(key?: string): Promise<void>;
 
   /**
    * Set authorization token
@@ -333,34 +343,34 @@ export interface HttpProviderInterface {
    */
   get$<T = unknown>(params: {
     url: string;
-    config?: Omit<HttpRequestConfig, "url" | "method">;
+    config?: HttpConfigWithoutUrlAndMethod;
   }): Observable<HttpResponse<T>>;
   post$<T = unknown>(params: {
     url: string;
     data?: unknown;
-    config?: Omit<HttpRequestConfig, "url" | "method" | "data">;
+    config?: HttpConfigWithoutUrlMethodAndData;
   }): Observable<HttpResponse<T>>;
   put$<T = unknown>(params: {
     url: string;
     data?: unknown;
-    config?: Omit<HttpRequestConfig, "url" | "method" | "data">;
+    config?: HttpConfigWithoutUrlMethodAndData;
   }): Observable<HttpResponse<T>>;
   patch$<T = unknown>(params: {
     url: string;
     data?: unknown;
-    config?: Omit<HttpRequestConfig, "url" | "method" | "data">;
+    config?: HttpConfigWithoutUrlMethodAndData;
   }): Observable<HttpResponse<T>>;
   delete$<T = unknown>(params: {
     url: string;
-    config?: Omit<HttpRequestConfig, "url" | "method">;
+    config?: HttpConfigWithoutUrlAndMethod;
   }): Observable<HttpResponse<T>>;
   head$<T = unknown>(params: {
     url: string;
-    config?: Omit<HttpRequestConfig, "url" | "method">;
+    config?: HttpConfigWithoutUrlAndMethod;
   }): Observable<HttpResponse<T>>;
   options$<T = unknown>(params: {
     url: string;
-    config?: Omit<HttpRequestConfig, "url" | "method">;
+    config?: HttpConfigWithoutUrlAndMethod;
   }): Observable<HttpResponse<T>>;
   request$<T = unknown>(config: HttpRequestConfig): Observable<HttpResponse<T>>;
 }

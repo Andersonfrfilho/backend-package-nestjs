@@ -173,7 +173,7 @@ export class HttpModule {
       } else if (options.cache?.redisOptions) {
         providers.push({
           provide: cacheToken,
-          useFactory: () => new RedisCacheProvider(options.cache!.redisOptions),
+          useFactory: () => new RedisCacheProvider(options.cache.redisOptions),
         });
       } else {
         providers.push({

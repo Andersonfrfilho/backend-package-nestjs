@@ -9,13 +9,6 @@ export const LIB_VERSION = pkg.version;
 
 export const TOKEN_CACHE_KEY = "keycloak:access_token";
 
-// ── Log contexts (className used in structured logs) ─────────────────────────
-
-export const LOG_CONTEXT = {
-  KEYCLOAK_CLIENT: "KeycloakClient",
-  BEARER_TOKEN_GUARD: "BearerTokenGuard",
-} as const;
-
 // ── HTTP status codes ─────────────────────────────────────────────────────────
 
 export const HTTP_STATUS = {

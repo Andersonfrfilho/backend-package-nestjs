@@ -1,12 +1,11 @@
+import type { KeycloakErrorOptions } from "./types/keycloak-error.types";
+
 export class KeycloakError extends Error {
   public readonly statusCode?: number;
   public readonly details?: unknown;
   public readonly keycloakError?: string;
 
-  constructor(
-    message: string,
-    opts?: { statusCode?: number; details?: unknown; keycloakError?: string },
-  ) {
+  constructor(message: string, opts?: KeycloakErrorOptions) {
     super(message);
     this.name = "KeycloakError";
     this.statusCode = opts?.statusCode;

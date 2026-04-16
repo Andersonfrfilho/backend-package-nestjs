@@ -1,7 +1,14 @@
 import { Inject, Injectable, Optional } from "@nestjs/common";
-import { HTTP_PROVIDER, getHttpRequestContext } from "@adatechnology/http-client";
+import {
+  HTTP_PROVIDER,
+  getHttpRequestContext,
+} from "@adatechnology/http-client";
 import type { HttpProviderInterface } from "@adatechnology/http-client";
-import { getContext, LOGGER_PROVIDER, LoggerProviderInterface } from "@adatechnology/logger";
+import {
+  getContext,
+  LOGGER_PROVIDER,
+  LoggerProviderInterface,
+} from "@adatechnology/logger";
 import { InMemoryCacheProvider } from "@adatechnology/cache";
 import type { CacheProviderInterface } from "@adatechnology/cache";
 import { CACHE_PROVIDER } from "@adatechnology/cache";
@@ -12,36 +19,8 @@ import type {
   KeycloakTokenResponse,
 } from "./keycloak.interface";
 import { KeycloakError } from "./errors/keycloak-error";
-import { LIB_NAME, LIB_VERSION, LOG_CONTEXT, TOKEN_CACHE_KEY } from "./keycloak.constants";
-
-function extractErrorInfo(err: any) {
-  const statusCode = err?.status ?? err?.response?.status;
-  const details = err?.response?.data ?? err?.context?.data ?? err?.context ?? err?.details;
-  const errorCode = err?.code ?? err?.response?.data?.error;
-
-  let keycloakError: string | undefined = undefined;
-
-  if (details && typeof details === "object" && details !== null) {
-    const raw = (details as Record<string, unknown>).error;
-    if (typeof raw === "string") {
-      keycloakError = raw;
-    } else if (raw) {
-      try {
-        keycloakError = JSON.stringify(raw);
-      } catch {
-        keycloakError = String(raw);
-      }
-    }
-  }
-
-  return {
-    statusCode,
-    details: details ?? err?.message,
-    keycloakError:
-      keycloakError ??
-      (errorCode ? `NETWORK_ERROR_${String(errorCode)}` : undefined),
-  };
-}
+import { extractKeycloakErrorInfo } from "./errors/utils/extract-keycloak-error-info";
+import { LIB_NAME, LIB_VERSION, TOKEN_CACHE_KEY } from "./keycloak.constants";
 
 /**
  * Minimal Keycloak client implementation without external shared infra dependencies.
@@ -49,33 +28,47 @@ function extractErrorInfo(err: any) {
 @Injectable()
 export class KeycloakClient implements KeycloakClientInterface {
   private readonly cacheProvider: CacheProviderInterface;
+  private readonly className = this.constructor.name;
   private tokenPromise?: Promise<string> | null = null;
 
   constructor(
     private readonly config: KeycloakConfig,
     @Inject(HTTP_PROVIDER) private readonly httpProvider: HttpProviderInterface,
-    @Optional() @Inject(LOGGER_PROVIDER) private readonly logger?: LoggerProviderInterface,
+    @Optional()
+    @Inject(LOGGER_PROVIDER)
+    private readonly logger?: LoggerProviderInterface,
     @Optional() @Inject(CACHE_PROVIDER) cacheProvider?: CacheProviderInterface,
   ) {
     this.cacheProvider = cacheProvider ?? new InMemoryCacheProvider(logger);
   }
 
-  private log(level: "debug" | "info" | "warn" | "error", message: string, libMethod: string, meta?: Record<string, unknown>) {
+  private log(
+    level: "debug" | "info" | "warn" | "error",
+    message: string,
+    libMethod: string,
+    meta?: Record<string, unknown>,
+  ) {
     if (!this.logger) return;
 
     const loggerCtx = getContext() as Record<string, unknown> | undefined;
     const httpCtx = getHttpRequestContext();
 
-    const logContext = loggerCtx?.logContext as { className?: string; methodName?: string } | undefined;
-    const requestId = (loggerCtx?.requestId as string | undefined) ?? httpCtx?.requestId;
+    const logContext = loggerCtx?.logContext as
+      | { className?: string; methodName?: string }
+      | undefined;
+    const requestId =
+      (loggerCtx?.requestId as string | undefined) ?? httpCtx?.requestId;
 
-    const source = logContext?.className && logContext?.methodName
-      ? `${logContext.className}.${logContext.methodName}`
-      : (httpCtx?.className && httpCtx?.methodName ? `${httpCtx.className}.${httpCtx.methodName}` : undefined);
+    const source =
+      logContext?.className && logContext?.methodName
+        ? `${logContext.className}.${logContext.methodName}`
+        : httpCtx?.className && httpCtx?.methodName
+          ? `${httpCtx.className}.${httpCtx.methodName}`
+          : undefined;
 
     const payload = {
       message,
-      context: LOG_CONTEXT.KEYCLOAK_CLIENT,
+      context: this.className,
       lib: LIB_NAME,
       libVersion: LIB_VERSION,
       libMethod,
@@ -95,14 +88,20 @@ export class KeycloakClient implements KeycloakClientInterface {
     this.log("debug", `${method} - Start`, method);
 
     // Check cache
-    const cached = await this.cacheProvider.get<string>(TOKEN_CACHE_KEY);
+    const cached = await this.cacheProvider.get<string>({
+      key: TOKEN_CACHE_KEY,
+    });
     if (cached) {
       this.log("debug", `${method} - Returning cached token`, method);
       return cached;
     }
 
     if (this.tokenPromise) {
-      this.log("debug", `${method} - Waiting for existing token request`, method);
+      this.log(
+        "debug",
+        `${method} - Waiting for existing token request`,
+        method,
+      );
       return this.tokenPromise;
     }
 
@@ -112,7 +111,11 @@ export class KeycloakClient implements KeycloakClientInterface {
         const ttlSeconds = this.config.tokenCacheTtl
           ? Math.floor(this.config.tokenCacheTtl / 1000)
           : tokenResponse.expires_in - 60;
-        await this.cacheProvider.set(TOKEN_CACHE_KEY, tokenResponse.access_token, ttlSeconds);
+        await this.cacheProvider.set({
+          key: TOKEN_CACHE_KEY,
+          value: tokenResponse.access_token,
+          ttlInSeconds: ttlSeconds,
+        });
         this.log("debug", `${method} - Token obtained and cached`, method);
         return tokenResponse.access_token;
       } finally {
@@ -151,15 +154,22 @@ export class KeycloakClient implements KeycloakClientInterface {
         data: body,
         config: {
           headers: { "Content-Type": "application/x-www-form-urlencoded" },
-          logContext: { className: LOG_CONTEXT.KEYCLOAK_CLIENT, methodName: method },
+          logContext: {
+            className: this.className,
+            methodName: method,
+          },
         },
       });
 
       this.log("info", `${method} - Success for user: ${username}`, method);
       return response.data;
     } catch (err: unknown) {
-      const { statusCode, details, keycloakError } = extractErrorInfo(err);
-      this.log("error", `${method} - Failed for user: ${username}`, method, { statusCode, keycloakError });
+      const { statusCode, details, keycloakError } =
+        extractKeycloakErrorInfo(err);
+      this.log("error", `${method} - Failed for user: ${username}`, method, {
+        statusCode,
+        keycloakError,
+      });
 
       throw new KeycloakError("Failed to obtain token with credentials", {
         statusCode,
@@ -199,14 +209,21 @@ export class KeycloakClient implements KeycloakClientInterface {
         data,
         config: {
           headers: { "Content-Type": "application/x-www-form-urlencoded" },
-          logContext: { className: LOG_CONTEXT.KEYCLOAK_CLIENT, methodName: method },
+          logContext: {
+            className: this.className,
+            methodName: method,
+          },
         },
       });
       this.log("debug", `${method} - Success`, method);
       return response.data;
     } catch (err: unknown) {
-      const { statusCode, details, keycloakError } = extractErrorInfo(err);
-      this.log("error", `${method} - Failed`, method, { statusCode, keycloakError });
+      const { statusCode, details, keycloakError } =
+        extractKeycloakErrorInfo(err);
+      this.log("error", `${method} - Failed`, method, {
+        statusCode,
+        keycloakError,
+      });
 
       throw new KeycloakError("Failed to request token", {
         statusCode,
@@ -236,20 +253,31 @@ export class KeycloakClient implements KeycloakClientInterface {
         data,
         config: {
           headers: { "Content-Type": "application/x-www-form-urlencoded" },
-          logContext: { className: LOG_CONTEXT.KEYCLOAK_CLIENT, methodName: method },
+          logContext: {
+            className: this.className,
+            methodName: method,
+          },
         },
       });
 
       const ttlSeconds = this.config.tokenCacheTtl
         ? Math.floor(this.config.tokenCacheTtl / 1000)
         : response.data.expires_in - 60;
-      await this.cacheProvider.set(TOKEN_CACHE_KEY, response.data.access_token, ttlSeconds);
+      await this.cacheProvider.set({
+        key: TOKEN_CACHE_KEY,
+        value: response.data.access_token,
+        ttlInSeconds: ttlSeconds,
+      });
 
       this.log("debug", `${method} - Success`, method);
       return response.data;
     } catch (err: unknown) {
-      const { statusCode, details, keycloakError } = extractErrorInfo(err);
-      this.log("error", `${method} - Failed`, method, { statusCode, keycloakError });
+      const { statusCode, details, keycloakError } =
+        extractKeycloakErrorInfo(err);
+      this.log("error", `${method} - Failed`, method, {
+        statusCode,
+        keycloakError,
+      });
 
       throw new KeycloakError("Failed to refresh token", {
         statusCode,
@@ -278,7 +306,10 @@ export class KeycloakClient implements KeycloakClientInterface {
         data,
         config: {
           headers: { "Content-Type": "application/x-www-form-urlencoded" },
-          logContext: { className: LOG_CONTEXT.KEYCLOAK_CLIENT, methodName: method },
+          logContext: {
+            className: this.className,
+            methodName: method,
+          },
         },
       });
 
@@ -286,8 +317,12 @@ export class KeycloakClient implements KeycloakClientInterface {
       this.log("debug", `${method} - Success (Active: ${active})`, method);
       return active;
     } catch (error: unknown) {
-      const { statusCode, details, keycloakError } = extractErrorInfo(error);
-      this.log("error", `${method} - Failed`, method, { statusCode, keycloakError });
+      const { statusCode, details, keycloakError } =
+        extractKeycloakErrorInfo(error);
+      this.log("error", `${method} - Failed`, method, {
+        statusCode,
+        keycloakError,
+      });
 
       throw new KeycloakError("Token introspection failed", {
         statusCode,
@@ -307,15 +342,22 @@ export class KeycloakClient implements KeycloakClientInterface {
         url: userInfoUrl,
         config: {
           headers: { Authorization: `Bearer ${token}` },
-          logContext: { className: LOG_CONTEXT.KEYCLOAK_CLIENT, methodName: method },
+          logContext: {
+            className: this.className,
+            methodName: method,
+          },
         },
       });
 
       this.log("debug", `${method} - Success`, method);
       return response.data;
     } catch (err: unknown) {
-      const { statusCode, details, keycloakError } = extractErrorInfo(err);
-      this.log("error", `${method} - Failed`, method, { statusCode, keycloakError });
+      const { statusCode, details, keycloakError } =
+        extractKeycloakErrorInfo(err);
+      this.log("error", `${method} - Failed`, method, {
+        statusCode,
+        keycloakError,
+      });
 
       throw new KeycloakError("Failed to retrieve userinfo", {
         statusCode,
@@ -326,7 +368,7 @@ export class KeycloakClient implements KeycloakClientInterface {
   }
 
   async clearTokenCache(): Promise<void> {
-    await this.cacheProvider.del(TOKEN_CACHE_KEY);
+    await this.cacheProvider.del({ key: TOKEN_CACHE_KEY });
   }
 
   private static scopesToString(scopes?: string | string[]): string {

@@ -4,12 +4,11 @@ import axios, {
   AxiosResponse,
   InternalAxiosRequestConfig,
 } from "axios";
-import { randomUUID } from "crypto";
+import { randomUUID } from "node:crypto";
 import { from, Observable } from "rxjs";
 
 import {
   ErrorInterceptor,
-  HttpExternalLogger,
   HttpLoggingConfig,
   HttpLogType,
   HttpRequestLogContext,
@@ -21,10 +20,7 @@ import { getHttpRequestContext } from "../../context/http-request-context.servic
 import { ErrorMapperService } from "../../errors/error-mapper.service";
 import { HttpClientError } from "../../errors/http-client-error";
 
-import {
-  AxiosHttpProviderInterface,
-  CacheEntry,
-} from "./axios.http.interfaces";
+import { AxiosHttpProviderInterface } from "./axios.http.interfaces";
 import type { AxiosHttpProviderOptions } from "./types/axios.http.types";
 import {
   UrlConfig,
@@ -37,7 +33,6 @@ import {
 } from "./types/axios.http.params";
 import {
   HEADERS_PARAMS,
-  ANSI_COLORS,
   LOG_TYPES,
   AUTH_SCHEME,
   DEFAULTS,
@@ -62,11 +57,11 @@ import {
  */
 @Injectable()
 export class AxiosHttpProvider implements AxiosHttpProviderInterface {
-  private axiosInstance: AxiosInstance;
-  private errorInterceptors: Map<number, ErrorInterceptor> = new Map();
+  private readonly axiosInstance: AxiosInstance;
+  private readonly errorInterceptors: Map<number, ErrorInterceptor> = new Map();
   private nextErrorInterceptorId = 0;
-  private requestInterceptorIds: Set<number> = new Set();
-  private responseInterceptorIds: Set<number> = new Set();
+  private readonly requestInterceptorIds: Set<number> = new Set();
+  private readonly responseInterceptorIds: Set<number> = new Set();
   private readonly loggingConfig?: HttpLoggingConfig;
   private readonly defaultCacheTtl: number;
   private readonly cacheKeyPrefix: string;
@@ -246,10 +241,15 @@ export class AxiosHttpProvider implements AxiosHttpProviderInterface {
     libMethod?: string,
   ): void {
     const context = this.loggingConfig?.context || "HttpClient";
-    const method = meta?.method ? `[${meta.method}]` : "";
-    const url = meta?.url ? `${meta.url}` : "";
-    const status = meta?.status ? `[${meta.status}]` : "";
-    const duration = meta?.durationMs ? ` (${meta.durationMs}ms)` : "";
+    const methodValue = this.metaValueToString(meta?.method);
+    const urlValue = this.metaValueToString(meta?.url);
+    const statusValue = this.metaValueToString(meta?.status);
+    const durationValue = this.metaValueToString(meta?.durationMs);
+
+    const method = methodValue ? `[${methodValue}]` : "";
+    const url = urlValue || "";
+    const status = statusValue ? `[${statusValue}]` : "";
+    const duration = durationValue ? ` (${durationValue}ms)` : "";
 
     let message = "HTTP request";
     if (type === LOG_TYPES.REQUEST) {
@@ -290,12 +290,13 @@ export class AxiosHttpProvider implements AxiosHttpProviderInterface {
     console.log(`[${context}] ${message}`, normalizedMeta);
   }
 
-  private buildLogMessage(
-    type: HttpLogType,
-    source?: string,
-    requestId?: string,
-  ): string {
-    return `Request Processing${source ? ` (${source})` : ""}`;
+  private metaValueToString(value: unknown): string | undefined {
+    if (value === undefined || value === null) return undefined;
+    if (typeof value === "string") return value;
+    if (typeof value === "number" || typeof value === "boolean") {
+      return String(value);
+    }
+    return this.stringifyForLog(value);
   }
 
   private normalizeMetaForLogging(
@@ -336,15 +337,19 @@ export class AxiosHttpProvider implements AxiosHttpProviderInterface {
       return value;
     }
 
+    if (value instanceof Error) {
+      return value.message;
+    }
+
     try {
       return JSON.stringify(value);
-    } catch (error) {
-      return String(value);
+    } catch {
+      return "[unserializable]";
     }
   }
 
   private resolveRequestUrl(config?: any): string {
-    if (!config || !config.url) return "";
+    if (!config?.url) return "";
     const url = String(config.url);
     const base = config.baseURL ? String(config.baseURL) : undefined;
     if (!base) return url;
@@ -394,19 +399,19 @@ export class AxiosHttpProvider implements AxiosHttpProviderInterface {
     }
 
     try {
-      const keysToMask = [
+      const keysToMask = new Set([
         "access_token",
         "refresh_token",
         "password",
         "client_secret",
         "id_token",
-      ];
+      ]);
       // Work with a copy to avoid mutating the original response/request object
       const sanitized = Array.isArray(data) ? [...data] : { ...data };
 
       for (const key of Object.keys(sanitized)) {
         if (
-          keysToMask.includes(key.toLowerCase()) &&
+          keysToMask.has(key.toLowerCase()) &&
           typeof sanitized[key] === "string"
         ) {
           sanitized[key] = AxiosHttpProvider.maskToken(sanitized[key], 6);
@@ -419,7 +424,7 @@ export class AxiosHttpProvider implements AxiosHttpProviderInterface {
       }
 
       return sanitized;
-    } catch (e) {
+    } catch {
       return "[redacted due to sanitization error]";
     }
   }
@@ -429,7 +434,7 @@ export class AxiosHttpProvider implements AxiosHttpProviderInterface {
       ?.logContext || {}) as HttpRequestLogContext;
     const decoratorContext = getHttpRequestContext();
     // Fallback: logContext stored in logger AsyncLocalStorage (set by caller via runWithContext)
-    const asyncCtx = getContext() as Record<string, unknown> | undefined;
+    const asyncCtx = getContext();
     const asyncLogContext = asyncCtx?.logContext as
       | HttpRequestLogContext
       | undefined;
@@ -534,7 +539,7 @@ export class AxiosHttpProvider implements AxiosHttpProviderInterface {
       return;
     }
 
-    (headers as Record<string, unknown>)[headerName] = value;
+    headers[headerName] = value;
   }
 
   private buildSource(logContext: HttpRequestLogContext): string | undefined {
@@ -558,10 +563,7 @@ export class AxiosHttpProvider implements AxiosHttpProviderInterface {
    */
   private generateCacheKey({ url, config }: GenerateCacheKeyParams): string {
     // If caller provided an explicit cacheKey in the request config, use it
-    if (
-      config &&
-      Object.prototype.hasOwnProperty.call(config as any, "cacheKey")
-    ) {
+    if (config && Object.hasOwn(config, "cacheKey")) {
       return `${this.cacheKeyPrefix}${(config as any).cacheKey}`;
     }
 
@@ -574,7 +576,7 @@ export class AxiosHttpProvider implements AxiosHttpProviderInterface {
    */
   private async getCached<T>(key: string): Promise<T | null> {
     if (!this.cacheProvider) return null;
-    return this.cacheProvider.get<T>(key);
+    return this.cacheProvider.get<T>({ key });
   }
 
   /**
@@ -586,7 +588,11 @@ export class AxiosHttpProvider implements AxiosHttpProviderInterface {
     ttl = this.defaultCacheTtl,
   }: SetCacheParams<T>): Promise<void> {
     if (!this.cacheProvider) return;
-    await this.cacheProvider.set(key, data, ttl / 1000); // converting ms to seconds for consistency
+    await this.cacheProvider.set({
+      key,
+      value: data,
+      ttlInSeconds: ttl / 1000,
+    }); // converting ms to seconds for consistency
   }
 
   /**
@@ -595,7 +601,7 @@ export class AxiosHttpProvider implements AxiosHttpProviderInterface {
   async clearCache(key?: string): Promise<void> {
     if (!this.cacheProvider) return;
     if (key) {
-      await this.cacheProvider.del(key);
+      await this.cacheProvider.del({ key });
     } else {
       await this.cacheProvider.clear();
     }
@@ -984,7 +990,10 @@ export class AxiosHttpProvider implements AxiosHttpProviderInterface {
 
       this.logger?.debug?.({ message: `setAuthToken ${type} ${masked}` });
     } catch (err) {
-      // swallow logging errors
+      this.logger?.warn?.({
+        message: "setAuthToken logging failed",
+        meta: { error: this.stringifyForLog(err) },
+      });
     }
   }
 
@@ -1040,12 +1049,12 @@ export class AxiosHttpProvider implements AxiosHttpProviderInterface {
       // Map to a normalized application error with context
       try {
         const mapper = new ErrorMapperService();
-        const mapped: {
+        const mapped = mapper.mapUpstreamError(processedError) as {
           message?: string;
           status?: number;
           code?: string;
           context?: Record<string, unknown>;
-        } = mapper.mapUpstreamError(processedError) as unknown as any;
+        };
         const _msg: string = String(mapped.message ?? "HTTP client error");
         throw new HttpClientError({
           message: _msg,
@@ -1053,7 +1062,7 @@ export class AxiosHttpProvider implements AxiosHttpProviderInterface {
           code: mapped.code,
           context: mapped.context,
         });
-      } catch (mapErr) {
+      } catch {
         // If mapping fails, rethrow a generic HttpClientError with minimal context
         const fallback = new HttpClientError({
           message:
@@ -1068,7 +1077,7 @@ export class AxiosHttpProvider implements AxiosHttpProviderInterface {
             (processedError as Record<string, unknown>).code) as
             | string
             | undefined,
-          context: { original: String(processedError) },
+          context: { original: this.stringifyForLog(processedError) },
         });
         throw fallback;
       }
