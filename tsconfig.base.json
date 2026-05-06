@@ -18,6 +18,8 @@
       "@adatechnology/logger/*": ["packages/logger/src/*"],
       "@adatechnology/auth-keycloak": ["packages/keycloak/src"],
       "@adatechnology/auth-keycloak/*": ["packages/keycloak/src/*"],
+      "@adatechnology/keycloak-admin": ["packages/keycloak-admin/src"],
+      "@adatechnology/keycloak-admin/*": ["packages/keycloak-admin/src/*"],
       "@adatechnology/shared": ["packages/shared/src"],
       "@adatechnology/shared/*": ["packages/shared/src/*"],
       "@adatechnology/cache": ["packages/cache/src"],

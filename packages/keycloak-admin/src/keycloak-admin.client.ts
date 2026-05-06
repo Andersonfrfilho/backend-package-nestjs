@@ -1,4 +1,4 @@
-import { Inject, Injectable } from "@nestjs/common";
+import { Inject, Injectable, Optional } from "@nestjs/common";
 import {
   HTTP_PROVIDER,
   type HttpProviderInterface,
@@ -45,6 +45,7 @@ export class KeycloakAdminClient implements KeycloakAdminClientInterface {
     private readonly config: KeycloakAdminConfig,
     @Inject(HTTP_PROVIDER)
     private readonly httpProvider: HttpProviderInterface,
+    @Optional()
     @Inject(LOGGER_PROVIDER)
     private readonly logger?: LoggerProviderInterface,
   ) {}
@@ -345,9 +346,11 @@ export class KeycloakAdminClient implements KeycloakAdminClientInterface {
     try {
       await this.httpProvider.put({
         url,
+        data: {},
         config: {
           headers: {
             [KEYCLOAK_ADMIN_AUTHORIZATION_HEADER]: `${KEYCLOAK_ADMIN_BEARER_PREFIX}${adminToken}`,
+            "Content-Type": KEYCLOAK_ADMIN_CONTENT_TYPE_JSON,
           },
         },
       });
