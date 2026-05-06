@@ -191,6 +191,12 @@ importers:
       '@nestjs/core':
         specifier: ^11
         version: 11.1.14(@nestjs/common@11.1.16(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/platform-express@11.1.16)(reflect-metadata@0.2.2)(rxjs@7.8.2)
+      axios:
+        specifier: ^1.13.6
+        version: 1.13.6
+      rxjs:
+        specifier: ^7.8.2
+        version: 7.8.2
     devDependencies:
       '@esbuild-plugins/tsconfig-paths':
         specifier: ^0.1.2
