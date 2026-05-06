@@ -98,7 +98,9 @@ If the same or equivalent code exists in `shared` or another package, import and
 ## Config Validation in Module `forRoot()` / `forRootAsync()`
 Any library module that exposes `forRoot(config)` or `forRootAsync(config)` MUST validate the config object at **bootstrap time** — not later at runtime.
 
-Validation rules:
+**Exception:** If the module has **no required fields** (all config properties are optional and the module works correctly with an empty or omitted config), validation is **not required**. Only validate when there are constraints that would cause runtime failures if misconfigured.
+
+When validation is needed, follow these rules:
 1. Check that `config` is present and is an object.
 2. Validate every **required** field for presence, correct type, and format.
 3. Validate **optional** fields when they are provided (e.g. URL protocol, string length).
