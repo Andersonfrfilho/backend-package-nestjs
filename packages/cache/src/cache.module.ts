@@ -2,6 +2,7 @@ import { Global, Module, DynamicModule } from '@nestjs/common';
 
 import { cacheProviders } from './cache.provider';
 import { CACHE_ENCRYPTION_SECRET, CACHE_PROVIDER } from './cache.token';
+import { validateCacheConfig } from './validators/validate-cache-config';
 
 export interface CacheModuleOptions {
   isGlobal?: boolean;
@@ -17,6 +18,8 @@ export interface CacheModuleOptions {
 @Module({})
 export class CacheModule {
   static forRoot(options: CacheModuleOptions = {}): DynamicModule {
+    validateCacheConfig(options);
+
     const secretProvider = {
       provide: CACHE_ENCRYPTION_SECRET,
       useValue: options.encryptionSecret ?? null,
