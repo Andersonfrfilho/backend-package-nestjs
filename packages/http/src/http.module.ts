@@ -8,6 +8,7 @@ import {
   RedisCacheProvider,
 } from "@adatechnology/cache";
 import { HttpModuleOptions } from "./http.interface";
+import { validateHttpForRoot, validateHttpForRootAsync } from "./validators/validate-http-config";
 
 @Global()
 @Module({})
@@ -19,6 +20,8 @@ export class HttpModule {
     configOrOptions: any = {},
     options: HttpModuleOptions = {},
   ): DynamicModule {
+    validateHttpForRoot(configOrOptions, options);
+
     const httpToken = options.provide || HTTP_PROVIDER;
     const cacheToken = options.cacheToken || CACHE_PROVIDER;
 
@@ -67,6 +70,8 @@ export class HttpModule {
     provide?: any;
     cacheToken?: any;
   }): DynamicModule {
+    validateHttpForRootAsync(options);
+
     const httpToken = options.provide || HTTP_PROVIDER;
     const cacheToken = options.cacheToken || CACHE_PROVIDER;
 
