@@ -21,4 +21,5 @@ export { ApiAuthGuard } from "./api-auth.guard";
 export { AuthUser, AccessToken, CallerToken } from "./auth-user.decorator";
 export type { AuthUserOptions, CallerTokenOptions } from "./auth-user.decorator";
 export { KeycloakError } from "./errors/keycloak-error";
+export { validateKeycloakConfig } from "./validators/validate-keycloak-config";
 export type { TokenHeaderConfig, TokenClaimConfig } from "./keycloak.headers";

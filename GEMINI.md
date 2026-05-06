@@ -95,6 +95,30 @@ Before creating a new type, utility, constant, or error class inside a library, 
 
 If the same or equivalent code exists in `shared` or another package, import and reuse it. Do NOT duplicate logic across packages. The `shared` package is intentionally bundled into published packages via `tsup` so consumers do not need to install it separately.
 
+## Config Validation in Module `forRoot()` / `forRootAsync()`
+Any library module that exposes `forRoot(config)` or `forRootAsync(config)` MUST validate the config object at **bootstrap time** — not later at runtime.
+
+Validation rules:
+1. Check that `config` is present and is an object.
+2. Validate every **required** field for presence, correct type, and format.
+3. Validate **optional** fields when they are provided (e.g. URL protocol, string length).
+4. Collect ALL validation errors and report them in a single descriptive exception — never stop at the first error.
+5. Error messages MUST be explicit, including:
+   - The field name that failed
+   - What was received (show the actual value)
+   - An example of a valid value
+   - The expected type or format
+
+Example of a good validation error:
+```
+KeycloakAdminConfig validation failed:
+  - baseUrl: must start with 'http://' or 'https://'. Received: 'ftp://localhost'
+  - realm: is required and must be a non-empty string (e.g. 'BACKEND')
+  - adminPassword: is required and must be a non-empty string
+```
+
+Use a dedicated `validate*Config()` utility function (placed in `src/utils/` or `src/validators/`). Reuse `BaseAppError` or a package-specific error class. Export the validator so consumers can also call it manually if needed.
+
 ## Coding Standards
 - Prefer `Vanilla CSS` for styling.
 - Ensure all packages have consistent token export patterns.

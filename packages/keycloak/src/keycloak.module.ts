@@ -26,6 +26,7 @@ import {
   configureTokenHeaders,
   configureTokenClaims,
 } from "./keycloak.headers";
+import { validateKeycloakConfig } from "./validators/validate-keycloak-config";
 
 @Module({})
 export class KeycloakModule {
@@ -33,6 +34,8 @@ export class KeycloakModule {
     config: KeycloakConfig,
     httpConfig?: AxiosRequestConfig | AxiosInstance,
   ): DynamicModule {
+    validateKeycloakConfig(config);
+
     if (config.headers) configureTokenHeaders(config.headers);
     if (config.claims) configureTokenClaims(config.claims);
 
