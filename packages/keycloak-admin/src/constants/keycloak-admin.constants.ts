@@ -1,5 +1,5 @@
 export const KEYCLOAK_ADMIN_LIB_NAME = "@adatechnology/keycloak-admin";
-export const KEYCLOAK_ADMIN_LIB_VERSION = "0.1.0";
+export const KEYCLOAK_ADMIN_LIB_VERSION = "0.1.1";
 
 export const KEYCLOAK_ADMIN_DEFAULT_TIMEOUT = 5000;
 export const KEYCLOAK_ADMIN_GRANT_TYPE_PASSWORD = "password";
