@@ -8,6 +8,13 @@ coverage
 *.tsbuildinfo
 *.log
 
+# Stray build artifacts inside source directories (tsc/IDE leaks)
+packages/**/src/**/*.js
+packages/**/src/**/*.js.map
+packages/**/src/**/*.d.ts
+!packages/**/src/**/*.spec.ts
+!packages/**/src/**/*.test.ts
+
 # Turbo
 .turbo
 

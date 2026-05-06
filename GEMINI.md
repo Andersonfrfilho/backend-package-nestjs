@@ -29,6 +29,72 @@ Example for `App -> Service -> Lib`:
 - LibMethod: `HttpClient.post`
 Output: `[App][Lib][ReqId][Time][ServiceA.processData][HttpClient.post][INFO]`
 
+## Function Parameters and Return Types
+When a function accepts **more than one parameter**, it MUST use a single options/params object instead of positional arguments. Define dedicated TypeScript interfaces following the naming convention:
+- `NomeFuncaoParams` for the input object
+- `NomeFuncaoResult` for the return type (when the return shape is non-trivial)
+
+Example:
+```typescript
+export interface UpdateUserParams {
+  userId: string;
+  userData: Record<string, unknown>;
+  adminToken: string;
+}
+
+export interface UpdateUserResult {
+  success: boolean;
+}
+
+async updateUser(params: UpdateUserParams): Promise<UpdateUserResult>
+```
+
+This improves readability, enables easier future extensions, and prevents breaking changes when adding new fields.
+
+## Error Handling in Libraries
+All libraries MUST use `BaseAppError` from `#shared/errors/base-app-error` for custom errors. Do NOT use raw `Error` or `new Error()` directly in library code. Wrap upstream failures in `BaseAppError` with appropriate `status`, `code`, and `context`.
+
+Example:
+```typescript
+import { BaseAppError } from "#shared/errors/base-app-error";
+
+throw new BaseAppError({
+  message: "Keycloak admin token request failed",
+  status: 502,
+  code: "KEYCLOAK_ADMIN_TOKEN_ERROR",
+  context: { url, method: "POST" },
+});
+```
+
+## Internal Types and Utility Functions
+Internal interfaces, types, and utility functions MUST be organized into dedicated directories:
+- **Public interfaces** (consumed by users of the library) → `src/` root or `src/interfaces/`
+- **Internal types** (used only inside the library) → `src/types/`
+- **Utility functions** (helpers, parsers, extractors) → `src/utils/`
+
+Do NOT declare internal types or utility functions in the same file as the main service/provider. Extract them to separate files and import them.
+
+## Constants and Magic Strings
+All string literals that represent business concepts, header names, HTTP methods, error codes, or library metadata MUST be declared in a dedicated `src/constants/` or `*.constants.ts` file. Do NOT use inline magic strings in services or providers.
+
+Example:
+```typescript
+// src/keycloak-admin.constants.ts
+export const KEYCLOAK_ADMIN_LIB_NAME = "@adatechnology/keycloak-admin";
+export const KEYCLOAK_ADMIN_DEFAULT_TIMEOUT = 5000;
+export const KEYCLOAK_ADMIN_TOKEN_ENDPOINT = "/protocol/openid-connect/token";
+```
+
+## Dynamic Version from package.json
+The library version used in logs (`libVersion`) MUST be read dynamically from the package's `package.json` at build/runtime, never hardcoded. Use `import { version } from "../package.json"` (or equivalent) inside a constants file.
+
+## Avoid Code Duplication — Prefer Shared Packages
+Before creating a new type, utility, constant, or error class inside a library, check whether it already exists in:
+- `#shared/*` (monorepo internal shared code)
+- `@adatechnology/*` (published packages)
+
+If the same or equivalent code exists in `shared` or another package, import and reuse it. Do NOT duplicate logic across packages. The `shared` package is intentionally bundled into published packages via `tsup` so consumers do not need to install it separately.
+
 ## Coding Standards
 - Prefer `Vanilla CSS` for styling.
 - Ensure all packages have consistent token export patterns.
