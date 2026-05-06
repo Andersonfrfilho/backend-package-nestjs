@@ -8,10 +8,13 @@ import {
 } from "./keycloak-admin.token";
 import { KeycloakAdminClient } from "./keycloak-admin.client";
 import type { KeycloakAdminConfig } from "./keycloak-admin.interface";
+import { validateKeycloakAdminConfig } from "./utils/validate-config";
 
 @Module({})
 export class KeycloakAdminModule {
   static forRoot(config: KeycloakAdminConfig): DynamicModule {
+    validateKeycloakAdminConfig(config);
+
     return {
       module: KeycloakAdminModule,
       global: true,

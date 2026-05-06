@@ -84,6 +84,8 @@ export class KeycloakAdminModule {
   static forRoot(config: KeycloakAdminConfig): DynamicModule;
 }
 
+export function validateKeycloakAdminConfig(config: KeycloakAdminConfig): void;
+
 export const KEYCLOAK_ADMIN_CLIENT = "KEYCLOAK_ADMIN_CLIENT";
 export const KEYCLOAK_ADMIN_CONFIG = "KEYCLOAK_ADMIN_CONFIG";
 export const KEYCLOAK_ADMIN_PROVIDER = "KEYCLOAK_ADMIN_PROVIDER";

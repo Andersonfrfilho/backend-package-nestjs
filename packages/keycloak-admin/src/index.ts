@@ -5,6 +5,8 @@ export {
   KEYCLOAK_ADMIN_CONFIG,
   KEYCLOAK_ADMIN_PROVIDER,
 } from "./keycloak-admin.token";
+export { KeycloakAdminError } from "./errors/keycloak-admin.error";
+export { validateKeycloakAdminConfig } from "./utils/validate-config";
 export type {
   KeycloakAdminConfig,
   KeycloakAdminClientInterface,
