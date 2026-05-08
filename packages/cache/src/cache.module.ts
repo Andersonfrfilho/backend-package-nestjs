@@ -1,7 +1,7 @@
 import { Global, Module, DynamicModule } from '@nestjs/common';
 
 import { cacheProviders } from './cache.provider';
-import { CACHE_ENCRYPTION_SECRET, CACHE_PROVIDER } from './cache.token';
+import { CACHE_ENCRYPTION_SECRET, CACHE_MODULE_OPTIONS, CACHE_PROVIDER } from './cache.token';
 import { validateCacheConfig } from './validators/validate-cache-config';
 
 export interface CacheModuleOptions {
@@ -12,6 +12,13 @@ export interface CacheModuleOptions {
    * lançarão um erro explícito pedindo o secret.
    */
   encryptionSecret?: string;
+
+  /**
+   * Padrões de chave a serem excluídos dos logs de debug.
+   * Similar a `interceptorExcludedPaths` do LoggerModule.
+   * Exemplo: ['health:*', 'metrics:*']
+   */
+  excludedDebugKeys?: string[];
 }
 
 @Global()
@@ -25,11 +32,16 @@ export class CacheModule {
       useValue: options.encryptionSecret ?? null,
     };
 
+    const optionsProvider = {
+      provide: CACHE_MODULE_OPTIONS,
+      useValue: options,
+    };
+
     return {
       module: CacheModule,
       global: options.isGlobal ?? true,
-      providers: [...cacheProviders, secretProvider],
-      exports: [CACHE_PROVIDER, CACHE_ENCRYPTION_SECRET],
+      providers: [...cacheProviders, secretProvider, optionsProvider],
+      exports: [CACHE_PROVIDER, CACHE_ENCRYPTION_SECRET, CACHE_MODULE_OPTIONS],
     };
   }
 }
