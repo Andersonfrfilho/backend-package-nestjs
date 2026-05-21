@@ -14,6 +14,8 @@ import { KeycloakDemoModule } from './keycloak-demo/keycloak-demo.module';
 import { CacheDemoModule } from './cache-demo/cache-demo.module';
 import { HTTP_LOGGING_INTERCEPTOR, LoggerModule, RequestContextMiddleware } from '@adatechnology/logger';
 import { HealthModule } from './health/health.module';
+import { TracingModule } from '@adatechnology/shared';
+import { TracingDemoModule } from './tracing-demo/tracing-demo.module';
 
 @Module({
   imports: [
@@ -31,6 +33,8 @@ import { HealthModule } from './health/health.module';
     CacheModule.forRoot({
       encryptionSecret: process.env.CACHE_ENCRYPTION_SECRET || 'example-secret-change-in-production',
     }),
+    // Configurable tracing (select via TRACING_PROVIDER env var)
+    TracingModule,
     // example http-client demo module
     // demonstrates usage of the shared http-client package against jsonplaceholder
     HttpClientModule,
@@ -58,6 +62,9 @@ import { HealthModule } from './health/health.module';
     KeycloakDemoModule,
     // secure demo that shows role-based decorators & guard
     SecureModule,
+    // tracing demo: test the configurable tracing architecture
+    // (GET /tracing/status, GET /tracing/order/:orderId, GET /tracing/test-empty-stack)
+    TracingDemoModule,
     HealthModule,
   ],
   controllers: [AppController],
