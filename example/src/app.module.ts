@@ -2,7 +2,6 @@ import { Module, MiddlewareConsumer, NestModule } from '@nestjs/common';
 import { APP_INTERCEPTOR } from '@nestjs/core';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
-import { ExampleModule } from '@adatechnology/package-nestjs';
 import { HttpClientModule } from './http-client/http-client.module';
 import {
   KeycloakModule,
@@ -14,7 +13,7 @@ import { KeycloakDemoModule } from './keycloak-demo/keycloak-demo.module';
 import { CacheDemoModule } from './cache-demo/cache-demo.module';
 import { HTTP_LOGGING_INTERCEPTOR, LoggerModule, RequestContextMiddleware } from '@adatechnology/logger';
 import { HealthModule } from './health/health.module';
-import { TracingModule } from '@adatechnology/shared';
+import { TracingModule } from './shared/tracing/tracing.module';
 import { TracingDemoModule } from './tracing-demo/tracing-demo.module';
 
 @Module({
@@ -27,7 +26,6 @@ import { TracingDemoModule } from './tracing-demo/tracing-demo.module';
       isProduction: process.env.NODE_ENV === 'production',
       colorize: true,
     }),
-    ExampleModule.forRoot({ prefix: 'demo', enabled: true }),
     // registers CACHE_PROVIDER (InMemoryCacheProvider) globally
     // KeycloakModule will automatically use this cache for token storage
     CacheModule.forRoot({
