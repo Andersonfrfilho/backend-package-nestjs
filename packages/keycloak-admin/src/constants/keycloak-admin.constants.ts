@@ -11,8 +11,10 @@ export const KEYCLOAK_ADMIN_BEARER_PREFIX = "Bearer ";
 
 export const KEYCLOAK_ADMIN_ENDPOINTS = {
   MASTER_TOKEN: "/realms/master/protocol/openid-connect/token",
-  ADMIN_USERS: (baseUrl: string, realm: string, userId: string) =>
-    `${baseUrl}/admin/realms/${realm}/users/${userId}`,
+  ADMIN_USERS: (baseUrl: string, realm: string, userId?: string) =>
+    userId
+      ? `${baseUrl}/admin/realms/${realm}/users/${userId}`
+      : `${baseUrl}/admin/realms/${realm}/users`,
   ADMIN_RESET_PASSWORD: (baseUrl: string, realm: string, userId: string) =>
     `${baseUrl}/admin/realms/${realm}/users/${userId}/reset-password`,
   ADMIN_SEND_VERIFY_EMAIL: (baseUrl: string, realm: string, userId: string) =>
@@ -21,6 +23,7 @@ export const KEYCLOAK_ADMIN_ENDPOINTS = {
 
 export const KEYCLOAK_ADMIN_ERROR_CODES = {
   ADMIN_TOKEN_ERROR: "KEYCLOAK_ADMIN_TOKEN_ERROR",
+  CREATE_USER_ERROR: "KEYCLOAK_CREATE_USER_ERROR",
   UPDATE_USER_ERROR: "KEYCLOAK_UPDATE_USER_ERROR",
   RESET_PASSWORD_ERROR: "KEYCLOAK_RESET_PASSWORD_ERROR",
   TOGGLE_ENABLED_ERROR: "KEYCLOAK_TOGGLE_ENABLED_ERROR",

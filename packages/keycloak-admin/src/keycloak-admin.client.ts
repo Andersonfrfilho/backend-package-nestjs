@@ -13,6 +13,7 @@ import type {
   KeycloakAdminClientInterface,
   KeycloakAdminConfig,
   GetAdminTokenResult,
+  CreateUserParams,
   UpdateUserParams,
   ResetPasswordParams,
   ToggleUserEnabledParams,
@@ -117,6 +118,60 @@ export class KeycloakAdminClient implements KeycloakAdminClientInterface {
           details,
           errorCode,
         },
+      });
+    }
+  }
+
+  async createUser(params: CreateUserParams): Promise<string> {
+    const method = "createUser";
+    const { username, email, firstName, lastName, enabled, emailVerified, credentials, attributes, adminToken } = params;
+    this.log("info", `${method} - Start`, method, { username, email });
+
+    const url = KEYCLOAK_ADMIN_ENDPOINTS.ADMIN_USERS(this.config.baseUrl, this.config.realm);
+
+    const userData: Record<string, unknown> = {
+      username,
+      email,
+      firstName,
+      lastName,
+      enabled,
+      emailVerified,
+      ...(credentials ? { credentials } : {}),
+      ...(attributes ? { attributes } : {}),
+    };
+
+    try {
+      const response = await this.httpProvider.post({
+        url,
+        data: userData,
+        config: {
+          headers: {
+            [KEYCLOAK_ADMIN_AUTHORIZATION_HEADER]: `${KEYCLOAK_ADMIN_BEARER_PREFIX}${adminToken}`,
+            "Content-Type": KEYCLOAK_ADMIN_CONTENT_TYPE_JSON,
+          },
+        },
+      });
+
+      // Keycloak returns the user ID in the Location header
+      const locationHeader = response.headers?.["location"] ?? response.headers?.["Location"];
+      const userId = typeof locationHeader === "string" ? locationHeader.split("/").pop() ?? "" : "";
+
+      this.log("info", `${method} - Success`, method, { username, email, userId });
+      return userId;
+    } catch (err: unknown) {
+      const { statusCode, details, errorCode } = extractHttpError(err);
+      this.log("error", `${method} - Failed`, method, {
+        username,
+        email,
+        statusCode,
+        errorCode,
+      });
+
+      throw new KeycloakAdminError({
+        message: "Keycloak create user failed",
+        statusCode: statusCode ?? 502,
+        code: KEYCLOAK_ADMIN_ERROR_CODES.CREATE_USER_ERROR,
+        context: { url, method: "POST", username, email, details, errorCode },
       });
     }
   }

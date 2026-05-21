@@ -71,6 +71,21 @@ export interface SendVerifyEmailParams {
 }
 
 /**
+ * Params for creating a user via Keycloak Admin API (POST /admin/realms/{realm}/users)
+ */
+export interface CreateUserParams {
+  username: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  enabled: boolean;
+  emailVerified: boolean;
+  credentials?: Array<{ type: string; value: string; temporary: boolean }>;
+  attributes?: Record<string, string | string[]>;
+  adminToken: string;
+}
+
+/**
  * Keycloak Admin Client Interface
  *
  * Provides CRUD operations on Keycloak users via the Admin REST API.
@@ -80,6 +95,11 @@ export interface KeycloakAdminClientInterface {
    * Obtain an admin access token using the master realm.
    */
   getAdminToken(): Promise<GetAdminTokenResult>;
+
+  /**
+   * Create a new user in Keycloak. Returns the user ID from the Location header.
+   */
+  createUser(params: CreateUserParams): Promise<string>;
 
   /**
    * Update a user in Keycloak.
