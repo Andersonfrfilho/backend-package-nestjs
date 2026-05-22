@@ -6,9 +6,7 @@
   "updateInternalDependencies": "patch",
   "commit": false,
   "ignore": [
-    "example",
-    "@adatechnology/package-nestjs",
-    "@adatechnology/shared"
+    "example"
   ],
   "privatePackages": {
     "version": true,
