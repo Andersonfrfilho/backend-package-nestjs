@@ -1,6 +1,9 @@
 import { CallHandler, ExecutionContext, Injectable, NestInterceptor } from '@nestjs/common';
-import { trace, context } from '@opentelemetry/api';
+import { trace, context, createContextKey } from '@opentelemetry/api';
 import { Observable } from 'rxjs';
+
+const REQUEST_ID_KEY = createContextKey('request.id');
+const CORRELATION_ID_KEY = createContextKey('correlation.id');
 
 /**
  * Injeta requestId no contexto OpenTelemetry para que:
@@ -10,8 +13,8 @@ import { Observable } from 'rxjs';
  */
 @Injectable()
 export class OpenTelemetryRequestIdInterceptor implements NestInterceptor {
-  intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
-    const req = context.switchToHttp().getRequest();
+  intercept(executionContext: ExecutionContext, next: CallHandler): Observable<any> {
+    const req = executionContext.switchToHttp().getRequest();
     const requestId = (req as any).requestId;
 
     if (!requestId) {
@@ -23,19 +26,17 @@ export class OpenTelemetryRequestIdInterceptor implements NestInterceptor {
       // Injetar requestId como atributo do span
       span.setAttribute('request.id', requestId);
       span.setAttribute('correlation.id', requestId);
-
-      // Adicionar também como baggage para propagação automática
-      // (importante para libraries externas)
     }
 
-    // Propagar requestId através do contexto OpenTelemetry
-    // Isso garante que qualquer código dentro dessa requisição
-    // tenha acesso ao requestId, inclusive bibliotecas externas
-    return context.with(
-      context.active()
-        .setValue('request.id', requestId)
-        .setValue('correlation.id', requestId),
-      () => next.handle(),
-    );
+    // Propagar requestId através do contexto OpenTelemetry usando context.with()
+    const ctx = context.active()
+      .setValue(REQUEST_ID_KEY, requestId)
+      .setValue(CORRELATION_ID_KEY, requestId);
+
+    return new Observable(subscriber => {
+      context.with(ctx, () => {
+        next.handle().subscribe(subscriber);
+      });
+    });
   }
 }

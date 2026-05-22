@@ -1,6 +1,9 @@
 import { Injectable } from '@nestjs/common';
-import { trace, context } from '@opentelemetry/api';
+import { trace, context, createContextKey } from '@opentelemetry/api';
 import { TracingProvider } from '../interfaces/tracing-provider.interface';
+
+const REQUEST_ID_KEY = createContextKey('request.id');
+const CORRELATION_ID_KEY = createContextKey('correlation.id');
 
 /**
  * Implementação de tracing usando OpenTelemetry (Jaeger, CloudTrace, etc)
@@ -23,7 +26,9 @@ export class OpenTelemetryTracingProvider implements TracingProvider {
     }
 
     // Propagar via contexto para bibliotecas externas
-    const ctx = context.active().setValue('request.id', requestId).setValue('correlation.id', requestId);
+    const ctx = context.active()
+      .setValue(REQUEST_ID_KEY, requestId)
+      .setValue(CORRELATION_ID_KEY, requestId);
     context.with(ctx, () => {
       // Context propagated
     });

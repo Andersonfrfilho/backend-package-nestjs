@@ -1,6 +1,8 @@
 import { Injectable } from '@nestjs/common';
-import { context } from '@opentelemetry/api';
+import { context, createContextKey } from '@opentelemetry/api';
 import { TracingFactoryService } from './tracing-factory.service';
+
+const STACK_KEY = createContextKey('trace:stack');
 
 /**
  * Versão agnóstica a fornecedor do TraceStackService
@@ -8,7 +10,6 @@ import { TracingFactoryService } from './tracing-factory.service';
  */
 @Injectable()
 export class ConfigurableTraceStackService {
-  private readonly STACK_KEY = 'trace:stack';
 
   constructor(private tracingFactory: TracingFactoryService) {}
 
@@ -21,7 +22,7 @@ export class ConfigurableTraceStackService {
 
     // Armazenar no contexto OpenTelemetry (se disponível)
     try {
-      const ctx = context.active().setValue(this.STACK_KEY, newStack);
+      const ctx = context.active().setValue(STACK_KEY, newStack);
       context.with(ctx, () => {
         // Context updated
       });
@@ -43,7 +44,7 @@ export class ConfigurableTraceStackService {
 
       // Armazenar no contexto OpenTelemetry
       try {
-        const ctx = context.active().setValue(this.STACK_KEY, newStack);
+        const ctx = context.active().setValue(STACK_KEY, newStack);
         context.with(ctx, () => {
           // Context updated
         });
@@ -61,7 +62,7 @@ export class ConfigurableTraceStackService {
    */
   getStack(): string[] {
     try {
-      const stack = context.active().getValue(this.STACK_KEY);
+      const stack = context.active().getValue(STACK_KEY);
       return Array.isArray(stack) ? stack : [];
     } catch {
       // OpenTelemetry não disponível, return empty
@@ -107,7 +108,7 @@ export class ConfigurableTraceStackService {
    */
   clear(): void {
     try {
-      context.active().setValue(this.STACK_KEY, []);
+      context.active().setValue(STACK_KEY, []);
     } catch {
       // OpenTelemetry não disponível
     }

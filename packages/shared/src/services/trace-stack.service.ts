@@ -1,5 +1,7 @@
 import { Injectable } from '@nestjs/common';
-import { context } from '@opentelemetry/api';
+import { context, createContextKey } from '@opentelemetry/api';
+
+const STACK_KEY = createContextKey('trace:stack');
 
 /**
  * Tracks the call stack of methods during request processing.
@@ -12,14 +14,13 @@ import { context } from '@opentelemetry/api';
  */
 @Injectable()
 export class TraceStackService {
-  private readonly STACK_KEY = 'trace:stack';
 
   /**
    * Push a method name to the call stack
    */
   push(methodName: string): void {
     const stack = this.getStack();
-    const ctx = context.active().setValue(this.STACK_KEY, [...stack, methodName]);
+    const ctx = context.active().setValue(STACK_KEY, [...stack, methodName]);
     context.with(ctx, () => {
       // Context updated
     });
@@ -32,7 +33,7 @@ export class TraceStackService {
     const stack = this.getStack();
     if (stack.length > 0) {
       const newStack = stack.slice(0, -1);
-      const ctx = context.active().setValue(this.STACK_KEY, newStack);
+      const ctx = context.active().setValue(STACK_KEY, newStack);
       context.with(ctx, () => {
         // Context updated
       });
@@ -43,7 +44,7 @@ export class TraceStackService {
    * Get the current call stack as an array
    */
   getStack(): string[] {
-    const stack = context.active().getValue(this.STACK_KEY);
+    const stack = context.active().getValue(STACK_KEY);
     return Array.isArray(stack) ? stack : [];
   }
 
@@ -84,6 +85,6 @@ export class TraceStackService {
    * Clear the entire call stack
    */
   clear(): void {
-    context.active().setValue(this.STACK_KEY, []);
+    context.active().setValue(STACK_KEY, []);
   }
 }
