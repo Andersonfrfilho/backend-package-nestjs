@@ -9,9 +9,10 @@
     "declaration": true,
     "composite": true,
     "resolveJsonModule": true,
+    "baseUrl": ".",
     "paths": {
-      "@adatechnology/logger": ["../logger/dist", "../logger/dist"],
-      "@adatechnology/logger/*": ["../logger/dist/*", "../logger/dist/*"]
+      "@adatechnology/*": ["../../packages/*/src"],
+      "#shared": ["../../packages/shared/src"]
     }
   },
   "include": [

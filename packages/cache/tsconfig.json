@@ -4,7 +4,11 @@
     "rootDir": ".",
     "outDir": "dist",
     "baseUrl": ".",
-    "resolveJsonModule": true
+    "resolveJsonModule": true,
+    "paths": {
+      "@adatechnology/*": ["../../packages/*/src"],
+      "#shared": ["../../packages/shared/src"]
+    }
   },
   "include": ["src/**/*", "package.json"],
   "exclude": ["dist", "node_modules"]
