@@ -1,7 +1,7 @@
 ---
 "@adatechnology/cache": patch
 "@adatechnology/http-client": patch
-"@adatechnology/keycloak": patch
+"@adatechnology/auth-keycloak": patch
 "@adatechnology/keycloak-admin": patch
 ---
 
