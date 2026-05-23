@@ -1,10 +1,7 @@
 import { Inject, Injectable, Optional } from "@nestjs/common";
 import type { CacheModuleOptions } from "../cache.module";
-import {
-  getContext,
-  LOGGER_PROVIDER,
-  type LoggerProviderInterface,
-} from "@adatechnology/logger";
+import { getContext, LOGGER_PROVIDER } from "@adatechnology/logger";
+import type { LoggerProviderInterface } from "@adatechnology/logger";
 
 import {
   CacheProviderInterface,

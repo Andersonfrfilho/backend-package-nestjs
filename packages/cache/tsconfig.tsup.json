@@ -5,9 +5,10 @@
     "outDir": "dist",
     "baseUrl": ".",
     "resolveJsonModule": true,
+    "skipLibCheck": true,
     "paths": {
-      "@adatechnology/*": ["../../packages/*/src"],
-      "#shared": ["../../packages/shared/src"]
+      "@adatechnology/shared": ["../../packages/shared/src"],
+      "@adatechnology/shared/*": ["../../packages/shared/src/*"]
     }
   },
   "include": ["src/**/*"],
