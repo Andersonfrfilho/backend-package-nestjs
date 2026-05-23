@@ -25,6 +25,7 @@ type WritableLogInfo = Record<string, unknown> & {
   libMethod?: unknown;
   stack?: unknown;
   meta?: unknown;
+  traceStack?: unknown;
 };
 
 type MetaLogContext = {
@@ -62,6 +63,7 @@ function fillInfoFromMeta(info: WritableLogInfo): void {
     "libMethod",
     "appName",
     "appVersion",
+    "traceStack",
   ] as const;
 
   for (const key of metadataKeys) {
@@ -157,6 +159,7 @@ function formatDevelopmentLog(
   const libMethod = asString(info.libMethod);
   const libVersion = asString(info.libVersion);
   const stack = asString(info.stack);
+  const traceStack = Array.isArray(info.traceStack) ? info.traceStack : undefined;
 
   const meta =
     info.meta && typeof info.meta === "object"
@@ -212,7 +215,15 @@ function formatDevelopmentLog(
       colorizeText(useColors, colors.magenta, colors.reset, text),
   });
 
-  let output = `${appDisplay}${libDisplay}[${coloredRequestId}][${coloredTime}]${sourceDisplay}${libMethodDisplay}[${coloredLevel}] - ${message}`;
+  let traceStackDisplay = "";
+  if (traceStack && traceStack.length > 0) {
+    const stackItems = traceStack
+      .map((item) => `[${colorizeText(useColors, colors.magenta, colors.reset, item)}]`)
+      .join("");
+    traceStackDisplay = stackItems;
+  }
+
+  let output = `${appDisplay}${libDisplay}[${coloredRequestId}][${coloredTime}]${sourceDisplay}${traceStackDisplay}${libMethodDisplay}[${coloredLevel}] - ${message}`;
 
   if (meta && typeof meta === "object" && Object.keys(meta).length > 0) {
     const inspectedMeta = inspect(meta, {
@@ -291,6 +302,10 @@ export class WinstonImplementationModule {
 
     return [
       {
+        provide: "LOGGER_CONFIG",
+        useValue: config,
+      },
+      {
         provide: WINSTON_RAW,
         useValue: winstonLogger,
       },
@@ -344,11 +359,32 @@ export class WinstonImplementationModule {
       format: defaultFormat,
     });
 
+    const transportsList: any[] = [consoleTransport];
+
+    if (config?.fileTransport?.enabled) {
+      try {
+        const DailyRotateFile = require("winston-daily-rotate-file");
+        const fileTransport = new DailyRotateFile({
+          dirname: config.fileTransport.dir ?? "logs",
+          filename: config.fileTransport.filename ?? "app-%DATE%.log",
+          datePattern: "YYYY-MM-DD",
+          maxSize: config.fileTransport.maxSize ?? "20m",
+          maxFiles: config.fileTransport.maxFiles ?? "14d",
+          format: isProduction ? format.json() : developmentFormat,
+        });
+        transportsList.push(fileTransport);
+      } catch (error) {
+        console.warn(
+          "winston-daily-rotate-file not installed, skipping file transport",
+        );
+      }
+    }
+
     const defaultOptions: LoggerOptions = {
       level:
         config?.level || (process.env.LOG_LEVEL as any) || DEFAULT_LOG_LEVEL,
       format: defaultFormat,
-      transports: [consoleTransport],
+      transports: transportsList,
     };
 
     const mergedOptions: LoggerOptions = config?.loggerOptions

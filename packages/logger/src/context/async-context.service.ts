@@ -15,3 +15,27 @@ export function runWithContext<T>(
 ): T {
   return asyncLocalStorage.run(ctx, fn as any);
 }
+
+export function getTraceStack(): string[] {
+  const ctx = getContext();
+  if (!ctx) return [];
+  if (!ctx.traceStack) {
+    ctx.traceStack = [];
+  }
+  return ctx.traceStack as string[];
+}
+
+export function pushToTraceStack(method: string): void {
+  const ctx = getContext();
+  if (!ctx) return;
+  if (!ctx.traceStack) {
+    ctx.traceStack = [];
+  }
+  (ctx.traceStack as string[]).push(method);
+}
+
+export function popFromTraceStack(): void {
+  const ctx = getContext();
+  if (!ctx || !ctx.traceStack) return;
+  (ctx.traceStack as string[]).pop();
+}

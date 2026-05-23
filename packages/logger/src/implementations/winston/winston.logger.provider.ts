@@ -15,9 +15,10 @@ import {
   type WriteLogResult,
 } from "../../logger.interface";
 import type { Obfuscator } from "./winston.logger.types";
-import { getContext } from "../../context/async-context.service";
+import { getContext, getTraceStack } from "../../context/async-context.service";
 import { EMPTY_STRING } from "../../logger.constant";
 import { WINSTON_RAW, WINSTON_OBFUSCATOR } from "./winston.logger.token";
+import type { LoggerConfig } from "../../logger.config";
 
 @Injectable()
 export class WinstonLoggerProvider implements LoggerProviderInterface {
@@ -26,6 +27,7 @@ export class WinstonLoggerProvider implements LoggerProviderInterface {
   constructor(
     @Inject(WINSTON_RAW) private readonly logger: WinstonLoggerType,
     @Inject(WINSTON_OBFUSCATOR) private readonly obfuscator?: Obfuscator,
+    @Inject("LOGGER_CONFIG") private readonly config?: LoggerConfig,
   ) {}
 
   debug(payload: DebugParams): DebugResult {
@@ -91,6 +93,13 @@ export class WinstonLoggerProvider implements LoggerProviderInterface {
       requestId: requestIdFromContext || rest.requestId,
       meta: obfuscatedMeta,
     };
+
+    if (this.config?.enableTraceStack) {
+      const traceStack = getTraceStack();
+      if (traceStack.length > 0) {
+        logInfo.traceStack = traceStack;
+      }
+    }
 
     this.logger.log(level as unknown as string, messageText, logInfo);
   }

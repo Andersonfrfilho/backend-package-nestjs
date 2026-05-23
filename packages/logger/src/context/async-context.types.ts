@@ -1,1 +1,3 @@
-export type RequestContext = Record<string, unknown> | undefined;
+export type RequestContext = (Record<string, unknown> & {
+  traceStack?: string[];
+}) | undefined;

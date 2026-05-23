@@ -20,6 +20,12 @@ export { RequestContextMiddleware } from "./middleware/request-context.middlewar
 export { HttpLoggingInterceptor } from "./interceptors/http-logging.interceptor";
 export { HTTP_LOGGING_INTERCEPTOR_CONTEXT } from "./interceptors/http-logging.interceptor.constant";
 export { ExcludeHttpLogging } from "./interceptors/exclude-http-logging.decorator";
-export { getContext, runWithContext } from "./context/async-context.service";
+export {
+  getContext,
+  runWithContext,
+  getTraceStack,
+  pushToTraceStack,
+  popFromTraceStack,
+} from "./context/async-context.service";
 export type { LoggerConfig } from "./logger.config";
 export { DEFAULT_LOGGER_CONFIG } from "./logger.config";

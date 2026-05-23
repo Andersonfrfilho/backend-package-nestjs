@@ -25,6 +25,12 @@ import { TracingDemoModule } from './tracing-demo/tracing-demo.module';
       appVersion: '0.0.3',
       isProduction: process.env.NODE_ENV === 'production',
       colorize: true,
+      enableTraceStack: true,
+      fileTransport: {
+        enabled: true,
+        dir: 'logs',
+        filename: 'example-%DATE%.log',
+      },
     }),
     // registers CACHE_PROVIDER (InMemoryCacheProvider) globally
     // KeycloakModule will automatically use this cache for token storage

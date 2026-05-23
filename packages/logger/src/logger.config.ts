@@ -52,6 +52,22 @@ export interface LoggerConfig extends WinstonModuleConfig {
    * Suporta prefixo exato ou parcial via startsWith
    */
   interceptorExcludedPaths?: string[];
+
+  /**
+   * Habilita rastreamento de stack de chamadas nos logs (default: false)
+   */
+  enableTraceStack?: boolean;
+
+  /**
+   * Configuração de file transport para os logs
+   */
+  fileTransport?: {
+    enabled: boolean;
+    dir?: string;
+    filename?: string;
+    maxSize?: string;
+    maxFiles?: string;
+  };
 }
 
 export const DEFAULT_LOGGER_CONFIG: LoggerConfig = {
