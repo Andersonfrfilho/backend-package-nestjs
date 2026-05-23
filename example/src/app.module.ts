@@ -13,7 +13,7 @@ import { KeycloakDemoModule } from './keycloak-demo/keycloak-demo.module';
 import { CacheDemoModule } from './cache-demo/cache-demo.module';
 import { HTTP_LOGGING_INTERCEPTOR, LoggerModule, RequestContextMiddleware } from '@adatechnology/logger';
 import { HealthModule } from './health/health.module';
-import { TracingModule } from './shared/tracing/tracing.module';
+import { TracingModule } from '@adatechnology/shared';
 import { TracingDemoModule } from './tracing-demo/tracing-demo.module';
 
 @Module({
