@@ -1,5 +1,4 @@
 import { Injectable } from '@nestjs/common';
-import { ConfigurableTraceStackService, TraceMethod } from '@adatechnology/shared';
 
 /**
  * Serviço de demonstração do novo sistema de tracing configurável
@@ -12,7 +11,6 @@ export class TracingDemoService {
    * Simula uma operação com múltiplas camadas
    * Demonstra como o call stack é rastreado automaticamente
    */
-  @TraceMethod()
   async processOrder(orderId: string) {
     console.log(`[TracingDemo] Call stack: ${this.traceStack.getStackFormatted()}`);
     console.log(`[TracingDemo] Depth: ${this.traceStack.getDepth()}`);
@@ -22,7 +20,6 @@ export class TracingDemoService {
     return { orderId, customer };
   }
 
-  @TraceMethod()
   private async getCustomerForOrder(orderId: string) {
     console.log(`[TracingDemo] Call stack: ${this.traceStack.getStackFormatted()}`);
     console.log(`[TracingDemo] Depth: ${this.traceStack.getDepth()}`);
@@ -32,7 +29,6 @@ export class TracingDemoService {
     return { customerId, name: 'John Doe' };
   }
 
-  @TraceMethod()
   private async getCustomerId(orderId: string): Promise<string> {
     console.log(`[TracingDemo] Call stack: ${this.traceStack.getStackFormatted()}`);
     console.log(`[TracingDemo] Depth: ${this.traceStack.getDepth()}`);
