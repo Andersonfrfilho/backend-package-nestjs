@@ -9,7 +9,7 @@ export default defineConfig({
   dts: false,
   clean: true,
   outDir: "dist",
-  external: ["@nestjs/*"],
+  external: ["@nestjs/*", "@adatechnology/logger"],
   noExternal: ["@adatechnology/shared"],
   esbuildPlugins: [TsconfigPathsPlugin({ tsconfig: "tsconfig.tsup.json" })],
   decoratorMetadata: true,
