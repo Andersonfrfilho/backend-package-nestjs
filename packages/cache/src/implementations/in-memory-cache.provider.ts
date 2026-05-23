@@ -3,7 +3,7 @@ import type { CacheModuleOptions } from "../cache.module";
 import {
   getContext,
   LOGGER_PROVIDER,
-  LoggerProviderInterface,
+  type LoggerProviderInterface,
 } from "@adatechnology/logger";
 
 import {
