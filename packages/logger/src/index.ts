@@ -29,3 +29,4 @@ export {
 } from "./context/async-context.service";
 export type { LoggerConfig } from "./logger.config";
 export { DEFAULT_LOGGER_CONFIG } from "./logger.config";
+export { TraceMethod } from "@adatechnology/shared";
