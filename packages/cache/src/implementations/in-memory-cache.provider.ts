@@ -12,7 +12,7 @@ import {
   SetParams,
 } from "../cache.interface";
 import { CACHE_ENCRYPTION_SECRET, CACHE_MODULE_OPTIONS } from "../cache.token";
-import { LIB_NAME, LIB_VERSION } from "../cache.constants";
+import { LIB_NAME } from "../cache.constants";
 import { decrypt, encrypt } from "../crypto.utils";
 
 @Injectable()
@@ -57,9 +57,6 @@ export class InMemoryCacheProvider implements CacheProviderInterface {
       context: this.className,
       meta: {
         key,
-        lib: LIB_NAME,
-        libVersion: LIB_VERSION,
-        libMethod: `${this.className}.${new Error().stack?.split('\n')[2]?.trim()?.split(' ')[1] ?? 'unknown'}`,
         logContext: this.callerLogContext(),
         ...extra,
       },
@@ -96,15 +93,11 @@ export class InMemoryCacheProvider implements CacheProviderInterface {
   }
 
   async clear(): Promise<void> {
-    const libMethod = `${this.className}.clear`;
     this.cache.clear();
     this.logger?.info?.({
       message: "Cache cleared (all keys)",
       context: this.className,
       meta: {
-        lib: LIB_NAME,
-        libVersion: LIB_VERSION,
-        libMethod,
         logContext: this.callerLogContext(),
       },
     });
@@ -116,7 +109,6 @@ export class InMemoryCacheProvider implements CacheProviderInterface {
     ttlInSeconds,
     secret,
   }: SetEncryptedParams<T>): Promise<void> {
-    const libMethod = `${this.className}.setEncrypted`;
     const resolvedSecret = secret ?? this.encryptionSecret;
 
     if (!resolvedSecret) {
@@ -138,9 +130,6 @@ export class InMemoryCacheProvider implements CacheProviderInterface {
       meta: {
         key,
         ttlInSeconds: ttlInSeconds ?? null,
-        lib: LIB_NAME,
-        libVersion: LIB_VERSION,
-        libMethod,
         logContext: this.callerLogContext(),
       },
     });
@@ -150,7 +139,6 @@ export class InMemoryCacheProvider implements CacheProviderInterface {
     key,
     secret,
   }: GetEncryptedParams): Promise<T | null> {
-    const libMethod = `${this.className}.getEncrypted`;
     const resolvedSecret = secret ?? this.encryptionSecret;
 
     if (!resolvedSecret) {
@@ -168,9 +156,6 @@ export class InMemoryCacheProvider implements CacheProviderInterface {
         meta: {
           key,
           hit: false,
-          lib: LIB_NAME,
-          libVersion: LIB_VERSION,
-          libMethod,
           logContext: this.callerLogContext(),
         },
       });
@@ -185,9 +170,6 @@ export class InMemoryCacheProvider implements CacheProviderInterface {
           key,
           hit: false,
           expired: true,
-          lib: LIB_NAME,
-          libVersion: LIB_VERSION,
-          libMethod,
           logContext: this.callerLogContext(),
         },
       });
@@ -206,9 +188,6 @@ export class InMemoryCacheProvider implements CacheProviderInterface {
         meta: {
           key,
           hit: true,
-          lib: LIB_NAME,
-          libVersion: LIB_VERSION,
-          libMethod,
           logContext: this.callerLogContext(),
         },
       });
@@ -219,9 +198,6 @@ export class InMemoryCacheProvider implements CacheProviderInterface {
         context: this.className,
         meta: {
           key,
-          lib: LIB_NAME,
-          libVersion: LIB_VERSION,
-          libMethod,
           logContext: this.callerLogContext(),
         },
       });

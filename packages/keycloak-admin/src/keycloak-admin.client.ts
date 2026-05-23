@@ -23,8 +23,6 @@ import type {
 } from "./keycloak-admin.interface";
 import { KEYCLOAK_ADMIN_CONFIG } from "./keycloak-admin.token";
 import {
-  KEYCLOAK_ADMIN_LIB_NAME,
-  KEYCLOAK_ADMIN_LIB_VERSION,
   KEYCLOAK_ADMIN_GRANT_TYPE_PASSWORD,
   KEYCLOAK_ADMIN_CLIENT_ID_ADMIN_CLI,
   KEYCLOAK_ADMIN_CONTENT_TYPE_FORM,
@@ -62,8 +60,6 @@ export class KeycloakAdminClient implements KeycloakAdminClientInterface {
     const payload = {
       message,
       context: this.className,
-      lib: KEYCLOAK_ADMIN_LIB_NAME,
-      libVersion: KEYCLOAK_ADMIN_LIB_VERSION,
       libMethod,
       meta,
     };

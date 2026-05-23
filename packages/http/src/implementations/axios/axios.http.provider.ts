@@ -37,7 +37,6 @@ import {
   AUTH_SCHEME,
   DEFAULTS,
 } from "./axios.http.constants";
-import { LIB_NAME, LIB_VERSION } from "../../http.constants";
 
 /** constants, interfaces and types are moved to dedicated files */
 
@@ -268,8 +267,6 @@ export class AxiosHttpProvider implements AxiosHttpProviderInterface {
         context,
         meta: normalizedMeta,
         source: meta?.source,
-        lib: LIB_NAME,
-        libVersion: LIB_VERSION,
         libMethod,
       } as any;
 
