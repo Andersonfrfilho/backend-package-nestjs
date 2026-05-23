@@ -3,13 +3,7 @@
   "compilerOptions": {
     "rootDir": ".",
     "outDir": "dist",
-    "baseUrl": ".",
-    "resolveJsonModule": true,
-    "skipLibCheck": true,
-    "paths": {
-      "@adatechnology/shared": ["../../packages/shared/src"],
-      "@adatechnology/shared/*": ["../../packages/shared/src/*"]
-    }
+    "skipLibCheck": true
   },
   "include": ["src/**/*"],
   "exclude": ["dist", "node_modules"]
