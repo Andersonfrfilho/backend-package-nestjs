@@ -223,10 +223,16 @@ function formatDevelopmentLog(
       .join("");
     traceStackDisplay = stackItems;
 
-    // When traceStack is active and no lib is set, suppress libMethodDisplay to avoid
-    // duplicating the current method (last traceStack item == logging context).
+    // Suppress libMethodDisplay only when it would duplicate the last traceStack item.
+    // This happens when the logging context is the same method that @TraceMethod pushed.
+    // When a different class (e.g. InMemoryCacheProvider) logs within that context,
+    // its method display must still appear.
     if (!lib) {
-      libMethodDisplay = "";
+      const lastStackItem = traceStack[traceStack.length - 1];
+      const currentMethod = source || context;
+      if (currentMethod === lastStackItem) {
+        libMethodDisplay = "";
+      }
     }
   }
 
