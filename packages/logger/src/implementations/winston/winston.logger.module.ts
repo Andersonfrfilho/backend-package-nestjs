@@ -223,7 +223,7 @@ function formatDevelopmentLog(
     traceStackDisplay = stackItems;
   }
 
-  let output = `${appDisplay}${libDisplay}[${coloredRequestId}][${coloredTime}]${sourceDisplay}${traceStackDisplay}${libMethodDisplay}[${coloredLevel}] - ${message}`;
+  let output = `[${coloredRequestId}][${coloredTime}]${appDisplay}${traceStackDisplay}${sourceDisplay}${libDisplay}${libMethodDisplay}[${coloredLevel}] - ${message}`;
 
   if (meta && typeof meta === "object" && Object.keys(meta).length > 0) {
     const inspectedMeta = inspect(meta, {
