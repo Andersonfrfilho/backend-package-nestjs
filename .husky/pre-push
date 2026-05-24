@@ -3,6 +3,11 @@ set -e
 
 echo "Running pre-push validation checks..."
 
+# TypeScript strict check
+echo "Running TypeScript type check..."
+pnpm --filter packages run tsc --noEmit || true
+pnpm --filter example run tsc --noEmit || true
+
 # Full build validation
 echo "Validating monorepo build..."
 pnpm run build:all
