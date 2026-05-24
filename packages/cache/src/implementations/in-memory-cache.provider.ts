@@ -12,7 +12,7 @@ import {
   SetParams,
 } from "../cache.interface";
 import { CACHE_ENCRYPTION_SECRET, CACHE_MODULE_OPTIONS } from "../cache.token";
-import { LIB_NAME } from "../cache.constants";
+import { LIB_NAME, LIB_VERSION } from "../cache.constants";
 import { decrypt, encrypt } from "../crypto.utils";
 
 @Injectable()
@@ -37,7 +37,7 @@ export class InMemoryCacheProvider implements CacheProviderInterface {
   ) {
     this.excludedDebugKeys =
       moduleOptions?.excludedDebugKeys?.map(
-        (pattern) => new RegExp('^' + pattern.replace(/\*/g, '.*') + '$'),
+        (pattern) => new RegExp("^" + pattern.replace(/\*/g, ".*") + "$"),
       ) ?? [];
   }
 
@@ -50,11 +50,19 @@ export class InMemoryCacheProvider implements CacheProviderInterface {
     return ctx?.logContext as Record<string, unknown> | undefined;
   }
 
-  private logDebug(message: string, key: string, extra: Record<string, unknown> = {}): void {
+  private logDebug(
+    method: string,
+    message: string,
+    key: string,
+    extra: Record<string, unknown> = {},
+  ): void {
     if (this.isDebugExcluded(key)) return;
     this.logger?.debug?.({
       message,
-      context: this.className,
+      context: `${this.className}.${method}`,
+      lib: LIB_NAME,
+      libVersion: LIB_VERSION,
+      libMethod: method,
       meta: {
         key,
         logContext: this.callerLogContext(),
@@ -67,36 +75,44 @@ export class InMemoryCacheProvider implements CacheProviderInterface {
     const entry = this.cache.get(key);
 
     if (!entry) {
-      this.logDebug(`Cache miss: ${key}`, key, { hit: false });
+      this.logDebug("get", `Cache miss: ${key}`, key, { hit: false });
       return null;
     }
 
     if (entry.expiry && Date.now() > entry.expiry) {
-      this.logDebug(`Cache expired: ${key}`, key, { hit: false, expired: true });
+      this.logDebug("get", `Cache expired: ${key}`, key, {
+        hit: false,
+        expired: true,
+      });
       this.cache.delete(key);
       return null;
     }
 
-    this.logDebug(`Cache hit: ${key}`, key, { hit: true });
+    this.logDebug("get", `Cache hit: ${key}`, key, { hit: true });
     return entry.value as T;
   }
 
   async set<T>({ key, value, ttlInSeconds }: SetParams<T>): Promise<void> {
     const expiry = ttlInSeconds ? Date.now() + ttlInSeconds * 1000 : null;
     this.cache.set(key, { value, expiry });
-    this.logDebug(`Cache set: ${key}`, key, { ttlInSeconds: ttlInSeconds ?? null });
+    this.logDebug("set", `Cache set: ${key}`, key, {
+      ttlInSeconds: ttlInSeconds ?? null,
+    });
   }
 
   async del({ key }: DelParams): Promise<void> {
     this.cache.delete(key);
-    this.logDebug(`Cache del: ${key}`, key);
+    this.logDebug("del", `Cache del: ${key}`, key);
   }
 
   async clear(): Promise<void> {
     this.cache.clear();
     this.logger?.info?.({
       message: "Cache cleared (all keys)",
-      context: this.className,
+      context: `${this.className}.clear`,
+      lib: LIB_NAME,
+      libVersion: LIB_VERSION,
+      libMethod: "clear",
       meta: {
         logContext: this.callerLogContext(),
       },
@@ -126,7 +142,10 @@ export class InMemoryCacheProvider implements CacheProviderInterface {
 
     this.logger?.debug?.({
       message: `Cache setEncrypted: ${key}`,
-      context: this.className,
+      context: `${this.className}.setEncrypted`,
+      lib: LIB_NAME,
+      libVersion: LIB_VERSION,
+      libMethod: "setEncrypted",
       meta: {
         key,
         ttlInSeconds: ttlInSeconds ?? null,
@@ -152,7 +171,10 @@ export class InMemoryCacheProvider implements CacheProviderInterface {
     if (!entry) {
       this.logger?.debug?.({
         message: `Cache miss (encrypted): ${key}`,
-        context: this.className,
+        context: `${this.className}.getEncrypted`,
+        lib: LIB_NAME,
+        libVersion: LIB_VERSION,
+        libMethod: "getEncrypted",
         meta: {
           key,
           hit: false,
@@ -165,7 +187,10 @@ export class InMemoryCacheProvider implements CacheProviderInterface {
     if (entry.expiry && Date.now() > entry.expiry) {
       this.logger?.debug?.({
         message: `Cache expired (encrypted): ${key}`,
-        context: this.className,
+        context: `${this.className}.getEncrypted`,
+        lib: LIB_NAME,
+        libVersion: LIB_VERSION,
+        libMethod: "getEncrypted",
         meta: {
           key,
           hit: false,
@@ -184,7 +209,10 @@ export class InMemoryCacheProvider implements CacheProviderInterface {
       });
       this.logger?.debug?.({
         message: `Cache hit (encrypted): ${key}`,
-        context: this.className,
+        context: `${this.className}.getEncrypted`,
+        lib: LIB_NAME,
+        libVersion: LIB_VERSION,
+        libMethod: "getEncrypted",
         meta: {
           key,
           hit: true,
@@ -195,7 +223,10 @@ export class InMemoryCacheProvider implements CacheProviderInterface {
     } catch {
       this.logger?.warn?.({
         message: `Cache decryption failed: ${key}`,
-        context: this.className,
+        context: `${this.className}.getEncrypted`,
+        lib: LIB_NAME,
+        libVersion: LIB_VERSION,
+        libMethod: "getEncrypted",
         meta: {
           key,
           logContext: this.callerLogContext(),

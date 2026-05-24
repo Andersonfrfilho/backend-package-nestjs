@@ -8,6 +8,9 @@ export enum LoggerLevel {
 export type LogParams = {
   message: string;
   context?: string;
+  lib?: string;
+  libVersion?: string;
+  libMethod?: string;
   meta?: Record<string, unknown>;
 };
 
