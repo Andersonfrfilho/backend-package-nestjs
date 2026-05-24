@@ -14,13 +14,14 @@ import { CacheDemoModule } from './cache-demo/cache-demo.module';
 import { HTTP_LOGGING_INTERCEPTOR, LoggerModule, RequestContextMiddleware } from '@adatechnology/logger';
 import { HealthModule } from './health/health.module';
 import { TracingDemoModule } from './tracing-demo/tracing-demo.module';
-import { PackageContextMiddleware } from './shared/middleware/package-context.middleware';
 
 @Module({
   imports: [
     LoggerModule.forRoot({
       level: 'debug',
       context: 'ExampleApp',
+      appName: 'example',
+      appVersion: '0.0.3',
       isProduction: process.env.NODE_ENV === 'production',
       colorize: true,
       enableTraceStack: true,
@@ -78,6 +79,6 @@ import { PackageContextMiddleware } from './shared/middleware/package-context.mi
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
-    consumer.apply(RequestContextMiddleware, PackageContextMiddleware).forRoutes('*');
+    consumer.apply(RequestContextMiddleware).forRoutes('*');
   }
 }

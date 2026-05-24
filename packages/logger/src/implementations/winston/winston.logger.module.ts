@@ -195,8 +195,7 @@ function formatDevelopmentLog(
 
   let appDisplay = "";
   if (appName) {
-    const appText = appVersion ? `${appName}@${appVersion}` : appName;
-    const appLabel = `App-${appText}`;
+    const appLabel = appVersion ? `${appName}:${appVersion}` : appName;
     appDisplay = `[${colorizeText(useColors, colors.green, colors.reset, appLabel)}]`;
   }
 
@@ -206,7 +205,7 @@ function formatDevelopmentLog(
     libDisplay = `[${colorizeText(useColors, colors.yellow, colors.reset, libText)}]`;
   }
 
-  const { sourceDisplay, libMethodDisplay } = buildMethodDisplays({
+  const methodDisplays = buildMethodDisplays({
     context,
     source,
     lib,
@@ -214,6 +213,8 @@ function formatDevelopmentLog(
     colorize: (text) =>
       colorizeText(useColors, colors.magenta, colors.reset, text),
   });
+  const { sourceDisplay } = methodDisplays;
+  let libMethodDisplay = methodDisplays.libMethodDisplay;
 
   let traceStackDisplay = "";
   if (traceStack && traceStack.length > 0) {
@@ -221,6 +222,12 @@ function formatDevelopmentLog(
       .map((item) => `[${colorizeText(useColors, colors.magenta, colors.reset, item)}]`)
       .join("");
     traceStackDisplay = stackItems;
+
+    // When traceStack is active and no lib is set, suppress libMethodDisplay to avoid
+    // duplicating the current method (last traceStack item == logging context).
+    if (!lib) {
+      libMethodDisplay = "";
+    }
   }
 
   let output = `[${coloredRequestId}][${coloredTime}]${appDisplay}${traceStackDisplay}${sourceDisplay}${libDisplay}${libMethodDisplay}[${coloredLevel}] - ${message}`;
