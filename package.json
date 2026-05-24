@@ -14,6 +14,7 @@
     "example"
   ],
   "scripts": {
+    "prepare": "husky install",
     "bootstrap": "pnpm install",
     "build": "pnpm run build:libs-ordered",
     "build:packages": "pnpm run build:libs-ordered",
@@ -32,6 +33,16 @@
     "example:start:dev": "pnpm --filter @adatechnology/http-client run build:watch & pnpm --filter @adatechnology/logger run build:watch & pnpm --filter @adatechnology/auth-keycloak run build:watch & pnpm --filter @adatechnology/package-nestjs run build:watch & pnpm --filter example run start:dev",
     "watch:packages": "pnpm -r --parallel run build:watch"
   },
+  "lint-staged": {
+    "packages/**/*.ts": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "example/**/*.ts": [
+      "eslint --fix",
+      "prettier --write"
+    ]
+  },
   "peerDependencies": {
     "@nestjs/common": "^11.0.16 || ^9",
     "@nestjs/core": "^11 || ^9.0.5"
@@ -41,6 +52,8 @@
     "@changesets/cli": "^2.26.0",
     "@changesets/changelog-github": "^0.6.0",
     "@types/node": "^22.10.7",
+    "husky": "^9.1.7",
+    "lint-staged": "^17.0.5",
     "pnpm": "^8.0.0",
     "tslib": "^2.5.0",
     "turbo": "^1.8.0",

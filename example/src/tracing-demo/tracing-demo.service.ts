@@ -1,48 +1,50 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Inject } from '@nestjs/common';
+import { LOGGER_PROVIDER, LoggerProviderInterface } from '@adatechnology/logger';
+import { TraceMethod } from '../shared/decorators/trace-method.decorator';
 
-/**
- * Serviço de demonstração do novo sistema de tracing configurável
- */
 @Injectable()
 export class TracingDemoService {
-  constructor(private traceStack: ConfigurableTraceStackService) {}
+  constructor(@Inject(LOGGER_PROVIDER) private logger: LoggerProviderInterface) {}
 
-  /**
-   * Simula uma operação com múltiplas camadas
-   * Demonstra como o call stack é rastreado automaticamente
-   */
+  @TraceMethod()
   async processOrder(orderId: string) {
-    console.log(`[TracingDemo] Call stack: ${this.traceStack.getStackFormatted()}`);
-    console.log(`[TracingDemo] Depth: ${this.traceStack.getDepth()}`);
+    this.logger.info({
+      message: 'Processing order',
+      context: `${this.constructor.name}.processOrder`,
+      meta: { orderId },
+    });
 
-    // Chama método que também tem @TraceMethod
     const customer = await this.getCustomerForOrder(orderId);
+
+    this.logger.info({
+      message: 'Order processed successfully',
+      context: `${this.constructor.name}.processOrder`,
+      meta: { orderId, customerId: customer.customerId },
+    });
+
     return { orderId, customer };
   }
 
+  @TraceMethod()
   private async getCustomerForOrder(orderId: string) {
-    console.log(`[TracingDemo] Call stack: ${this.traceStack.getStackFormatted()}`);
-    console.log(`[TracingDemo] Depth: ${this.traceStack.getDepth()}`);
+    this.logger.debug({
+      message: 'Fetching customer for order',
+      context: `${this.constructor.name}.getCustomerForOrder`,
+      meta: { orderId },
+    });
 
-    // Chama método mais profundo
     const customerId = await this.getCustomerId(orderId);
     return { customerId, name: 'John Doe' };
   }
 
+  @TraceMethod()
   private async getCustomerId(orderId: string): Promise<string> {
-    console.log(`[TracingDemo] Call stack: ${this.traceStack.getStackFormatted()}`);
-    console.log(`[TracingDemo] Depth: ${this.traceStack.getDepth()}`);
-    console.log(`[TracingDemo] Current method: ${this.traceStack.getCurrentMethod()}`);
-    console.log(`[TracingDemo] Parent method: ${this.traceStack.getParentMethod()}`);
+    this.logger.debug({
+      message: 'Extracting customer ID',
+      context: `${this.constructor.name}.getCustomerId`,
+      meta: { orderId },
+    });
 
     return `customer-${orderId}`;
-  }
-
-  /**
-   * Teste simples sem decorador (stack deve ser vazio)
-   */
-  testEmptyStack() {
-    console.log(`[TracingDemo] Stack when no decorator: ${this.traceStack.getStackFormatted()}`);
-    console.log(`[TracingDemo] Should be empty: "${this.traceStack.getStackFormatted() === ''}"`);
   }
 }

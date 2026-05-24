@@ -1,0 +1,14 @@
+#!/bin/sh
+set -e
+
+echo "Running pre-push validation checks..."
+
+# Full build validation
+echo "Validating monorepo build..."
+pnpm run build:all
+
+# npm audit on affected packages
+echo "Checking for npm vulnerabilities..."
+pnpm audit --audit-level=moderate || echo "⚠ Moderate vulnerabilities detected, but push allowed"
+
+echo "✓ Pre-push checks passed"
