@@ -59,7 +59,7 @@ export class InMemoryCacheProvider implements CacheProviderInterface {
     if (this.isDebugExcluded(key)) return;
     this.logger?.debug?.({
       message,
-      context: `${this.className}.${method}`,
+      context: this.className,
       lib: LIB_NAME,
       libVersion: LIB_VERSION,
       libMethod: method,
@@ -109,7 +109,7 @@ export class InMemoryCacheProvider implements CacheProviderInterface {
     this.cache.clear();
     this.logger?.info?.({
       message: "Cache cleared (all keys)",
-      context: `${this.className}.clear`,
+      context: this.className,
       lib: LIB_NAME,
       libVersion: LIB_VERSION,
       libMethod: "clear",
@@ -142,7 +142,7 @@ export class InMemoryCacheProvider implements CacheProviderInterface {
 
     this.logger?.debug?.({
       message: `Cache setEncrypted: ${key}`,
-      context: `${this.className}.setEncrypted`,
+      context: this.className,
       lib: LIB_NAME,
       libVersion: LIB_VERSION,
       libMethod: "setEncrypted",
@@ -171,7 +171,7 @@ export class InMemoryCacheProvider implements CacheProviderInterface {
     if (!entry) {
       this.logger?.debug?.({
         message: `Cache miss (encrypted): ${key}`,
-        context: `${this.className}.getEncrypted`,
+        context: this.className,
         lib: LIB_NAME,
         libVersion: LIB_VERSION,
         libMethod: "getEncrypted",
@@ -187,7 +187,7 @@ export class InMemoryCacheProvider implements CacheProviderInterface {
     if (entry.expiry && Date.now() > entry.expiry) {
       this.logger?.debug?.({
         message: `Cache expired (encrypted): ${key}`,
-        context: `${this.className}.getEncrypted`,
+        context: this.className,
         lib: LIB_NAME,
         libVersion: LIB_VERSION,
         libMethod: "getEncrypted",
@@ -209,7 +209,7 @@ export class InMemoryCacheProvider implements CacheProviderInterface {
       });
       this.logger?.debug?.({
         message: `Cache hit (encrypted): ${key}`,
-        context: `${this.className}.getEncrypted`,
+        context: this.className,
         lib: LIB_NAME,
         libVersion: LIB_VERSION,
         libMethod: "getEncrypted",
@@ -223,7 +223,7 @@ export class InMemoryCacheProvider implements CacheProviderInterface {
     } catch {
       this.logger?.warn?.({
         message: `Cache decryption failed: ${key}`,
-        context: `${this.className}.getEncrypted`,
+        context: this.className,
         lib: LIB_NAME,
         libVersion: LIB_VERSION,
         libMethod: "getEncrypted",
