@@ -1,6 +1,6 @@
 {
   "name": "@adatechnology/logger",
-  "version": "0.0.17",
+  "version": "0.0.18",
   "publishConfig": {
     "access": "public"
   },
@@ -24,12 +24,24 @@
     "@opentelemetry/semantic-conventions": "^1.0.0"
   },
   "peerDependenciesMeta": {
-    "@opentelemetry/auto-instrumentations-node": { "optional": true },
-    "@opentelemetry/exporter-trace-otlp-http": { "optional": true },
-    "@opentelemetry/resources": { "optional": true },
-    "@opentelemetry/sdk-node": { "optional": true },
-    "@opentelemetry/sdk-trace-base": { "optional": true },
-    "@opentelemetry/semantic-conventions": { "optional": true }
+    "@opentelemetry/auto-instrumentations-node": {
+      "optional": true
+    },
+    "@opentelemetry/exporter-trace-otlp-http": {
+      "optional": true
+    },
+    "@opentelemetry/resources": {
+      "optional": true
+    },
+    "@opentelemetry/sdk-node": {
+      "optional": true
+    },
+    "@opentelemetry/sdk-trace-base": {
+      "optional": true
+    },
+    "@opentelemetry/semantic-conventions": {
+      "optional": true
+    }
   },
   "devDependencies": {
     "@esbuild-plugins/tsconfig-paths": "^0.1.2",
