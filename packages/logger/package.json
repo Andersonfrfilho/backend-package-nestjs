@@ -15,33 +15,7 @@
   },
   "peerDependencies": {
     "@nestjs/common": "^11.0.16",
-    "@nestjs/core": "^11",
-    "@opentelemetry/auto-instrumentations-node": "^0.76.0",
-    "@opentelemetry/exporter-trace-otlp-http": "^0.200.0",
-    "@opentelemetry/resources": "^2.0.0",
-    "@opentelemetry/sdk-node": "^0.200.0",
-    "@opentelemetry/sdk-trace-base": "^2.0.0",
-    "@opentelemetry/semantic-conventions": "^1.0.0"
-  },
-  "peerDependenciesMeta": {
-    "@opentelemetry/auto-instrumentations-node": {
-      "optional": true
-    },
-    "@opentelemetry/exporter-trace-otlp-http": {
-      "optional": true
-    },
-    "@opentelemetry/resources": {
-      "optional": true
-    },
-    "@opentelemetry/sdk-node": {
-      "optional": true
-    },
-    "@opentelemetry/sdk-trace-base": {
-      "optional": true
-    },
-    "@opentelemetry/semantic-conventions": {
-      "optional": true
-    }
+    "@nestjs/core": "^11"
   },
   "devDependencies": {
     "@esbuild-plugins/tsconfig-paths": "^0.1.2",
