@@ -22,7 +22,7 @@ import type {
 } from "./keycloak.interface";
 import { KeycloakError } from "./errors/keycloak-error";
 import { extractKeycloakErrorInfo } from "./errors/utils/extract-keycloak-error-info";
-import { TOKEN_CACHE_KEY } from "./keycloak.constants";
+import { TOKEN_CACHE_KEY, LIB_NAME, LIB_VERSION } from "./keycloak.constants";
 
 /**
  * Minimal Keycloak client implementation without external shared infra dependencies.
@@ -71,6 +71,8 @@ export class KeycloakClient implements KeycloakClientInterface {
     const payload = {
       message,
       context: this.className,
+      lib: LIB_NAME,
+      libVersion: LIB_VERSION,
       libMethod,
       source,
       requestId,

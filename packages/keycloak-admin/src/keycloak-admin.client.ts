@@ -31,6 +31,8 @@ import {
   KEYCLOAK_ADMIN_BEARER_PREFIX,
   KEYCLOAK_ADMIN_ENDPOINTS,
   KEYCLOAK_ADMIN_ERROR_CODES,
+  KEYCLOAK_ADMIN_LIB_NAME,
+  KEYCLOAK_ADMIN_LIB_VERSION,
 } from "./constants/keycloak-admin.constants";
 import type { KeycloakRawTokenResponse } from "./types/keycloak-admin.types";
 import { extractHttpError } from "./utils/extract-http-error";
@@ -60,6 +62,8 @@ export class KeycloakAdminClient implements KeycloakAdminClientInterface {
     const payload = {
       message,
       context: this.className,
+      lib: KEYCLOAK_ADMIN_LIB_NAME,
+      libVersion: KEYCLOAK_ADMIN_LIB_VERSION,
       libMethod,
       meta,
     };
@@ -120,10 +124,23 @@ export class KeycloakAdminClient implements KeycloakAdminClientInterface {
 
   async createUser(params: CreateUserParams): Promise<string> {
     const method = "createUser";
-    const { username, email, firstName, lastName, enabled, emailVerified, credentials, attributes, adminToken } = params;
+    const {
+      username,
+      email,
+      firstName,
+      lastName,
+      enabled,
+      emailVerified,
+      credentials,
+      attributes,
+      adminToken,
+    } = params;
     this.log("info", `${method} - Start`, method, { username, email });
 
-    const url = KEYCLOAK_ADMIN_ENDPOINTS.ADMIN_USERS(this.config.baseUrl, this.config.realm);
+    const url = KEYCLOAK_ADMIN_ENDPOINTS.ADMIN_USERS(
+      this.config.baseUrl,
+      this.config.realm,
+    );
 
     const userData: Record<string, unknown> = {
       username,
@@ -149,10 +166,18 @@ export class KeycloakAdminClient implements KeycloakAdminClientInterface {
       });
 
       // Keycloak returns the user ID in the Location header
-      const locationHeader = response.headers?.["location"] ?? response.headers?.["Location"];
-      const userId = typeof locationHeader === "string" ? locationHeader.split("/").pop() ?? "" : "";
+      const locationHeader =
+        response.headers?.["location"] ?? response.headers?.["Location"];
+      const userId =
+        typeof locationHeader === "string"
+          ? (locationHeader.split("/").pop() ?? "")
+          : "";
 
-      this.log("info", `${method} - Success`, method, { username, email, userId });
+      this.log("info", `${method} - Success`, method, {
+        username,
+        email,
+        userId,
+      });
       return userId;
     } catch (err: unknown) {
       const { statusCode, details, errorCode } = extractHttpError(err);
@@ -254,9 +279,7 @@ export class KeycloakAdminClient implements KeycloakAdminClientInterface {
     }
   }
 
-  async toggleUserEnabled(
-    params: ToggleUserEnabledParams,
-  ): Promise<void> {
+  async toggleUserEnabled(params: ToggleUserEnabledParams): Promise<void> {
     const method = "toggleUserEnabled";
     const { userId, enabled, adminToken } = params;
     this.log("info", `${method} - Start`, method, { userId, enabled });

@@ -1,10 +1,13 @@
-export const KEYCLOAK_ADMIN_LIB_NAME = "@adatechnology/keycloak-admin";
-export const KEYCLOAK_ADMIN_LIB_VERSION = "0.1.2";
+import pkg from "../../package.json";
+
+export const KEYCLOAK_ADMIN_LIB_NAME: string = pkg.name;
+export const KEYCLOAK_ADMIN_LIB_VERSION: string = pkg.version;
 
 export const KEYCLOAK_ADMIN_DEFAULT_TIMEOUT = 5000;
 export const KEYCLOAK_ADMIN_GRANT_TYPE_PASSWORD = "password";
 export const KEYCLOAK_ADMIN_CLIENT_ID_ADMIN_CLI = "admin-cli";
-export const KEYCLOAK_ADMIN_CONTENT_TYPE_FORM = "application/x-www-form-urlencoded";
+export const KEYCLOAK_ADMIN_CONTENT_TYPE_FORM =
+  "application/x-www-form-urlencoded";
 export const KEYCLOAK_ADMIN_CONTENT_TYPE_JSON = "application/json";
 export const KEYCLOAK_ADMIN_AUTHORIZATION_HEADER = "Authorization";
 export const KEYCLOAK_ADMIN_BEARER_PREFIX = "Bearer ";
