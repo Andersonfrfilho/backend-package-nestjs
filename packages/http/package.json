@@ -16,7 +16,7 @@
   "dependencies": {
     "@adatechnology/logger": "workspace:*",
     "@adatechnology/cache": "workspace:*",
-    "axios": "^1.13.6",
+    "axios": "^1.15.2",
     "rxjs": "^7.8.2"
   },
   "peerDependencies": {

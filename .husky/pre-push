@@ -12,8 +12,32 @@ pnpm --filter example run tsc --noEmit || true
 echo "Validating monorepo build..."
 pnpm run build:all
 
-# npm audit on affected packages
-echo "Checking for npm vulnerabilities..."
-pnpm audit --audit-level=moderate || echo "⚠ Moderate vulnerabilities detected, but push allowed"
+# Security audit — check only for HIGH/CRITICAL vulnerabilities
+# Remaining known moderate issues (intentionally not overridden):
+#   - pnpm@9.x: requires pnpm@10+ to patch all CVEs (major upgrade deferred)
+#   - qs/nestjs: upstream NestJS/Express — awaiting framework update
+#   - ajv@7: used by @nestjs/cli internally — cannot upgrade without breaking CLI
+echo "Checking for HIGH/CRITICAL vulnerabilities..."
+AUDIT_OUT=$(pnpm audit --audit-level=high 2>&1) || AUDIT_EXIT=$?
+AUDIT_EXIT=${AUDIT_EXIT:-0}
+
+# Filter out cosmetic parse error from pnpm@8 lockfile audit (does not affect results)
+CLEAN_OUT=$(echo "$AUDIT_OUT" | grep -v "reference.startsWith" \
+                              | grep -v "refToRelative" \
+                              | grep -v "lockfileWalker" \
+                              | grep -v "lockfileToAudit" \
+                              | grep -v "node_modules/.pnpm/pnpm" \
+                              | grep -v "^    at " \
+                              || true)
+
+if [ -n "$CLEAN_OUT" ]; then
+  echo "$CLEAN_OUT"
+fi
+
+if [ "$AUDIT_EXIT" -ne 0 ]; then
+  echo "⚠ HIGH/CRITICAL vulnerabilities detected — review audit output above"
+else
+  echo "✓ No high/critical vulnerabilities"
+fi
 
 echo "✓ Pre-push checks passed"
