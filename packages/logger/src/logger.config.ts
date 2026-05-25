@@ -1,5 +1,6 @@
 import type { WinstonModuleConfig } from "./implementations/winston/winston.logger.types";
 import { LoggerLevel } from "./logger.interface";
+import type { TracingConfig } from "./tracing/tracing.config";
 
 export interface LoggerConfig extends WinstonModuleConfig {
   /**
@@ -68,6 +69,12 @@ export interface LoggerConfig extends WinstonModuleConfig {
     maxSize?: string;
     maxFiles?: string;
   };
+
+  /**
+   * Configuração de tracing distribuído (OpenTelemetry).
+   * Pode ser sobrescrita por env vars OTEL_* e TRACING_PROVIDER.
+   */
+  tracing?: TracingConfig;
 }
 
 export const DEFAULT_LOGGER_CONFIG: LoggerConfig = {
