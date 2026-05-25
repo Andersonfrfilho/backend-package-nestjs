@@ -1,5 +1,6 @@
 import { Injectable, Inject } from "@nestjs/common";
 import { Logger as WinstonLoggerType } from "winston";
+import { trace } from "@opentelemetry/api";
 import {
   type DebugParams,
   type DebugResult,
@@ -86,11 +87,16 @@ export class WinstonLoggerProvider implements LoggerProviderInterface {
     const requestContext = getContext();
     const requestIdFromContext = requestContext?.requestId;
 
+    // Extract OTel trace ID for correlation with Jaeger
+    const span = trace.getActiveSpan();
+    const traceId = span?.spanContext().traceId;
+
     // Merge everything into a flat info object for Winston
     const logInfo: Record<string, unknown> = {
       ...rest,
       context: messageContext,
       requestId: requestIdFromContext || rest.requestId,
+      traceId: traceId,
       meta: obfuscatedMeta,
     };
 
