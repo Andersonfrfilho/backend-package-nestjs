@@ -1,7 +1,7 @@
 {
   "name": "backend-monorepo",
   "private": true,
-  "packageManager": "pnpm@9.15.0",
+  "packageManager": "pnpm@10.28.2",
   "version": "0.0.0",
   "description": "Monorepo for backend shared packages",
   "main": "dist/index.js",
@@ -54,7 +54,7 @@
     "@types/node": "^22.10.7",
     "husky": "^9.1.7",
     "lint-staged": "^17.0.5",
-    "pnpm": "^9.15.0",
+    "pnpm": "^10.28.2",
     "tslib": "^2.5.0",
     "turbo": "^2.9.14",
     "vitepress": "^1.6.4",
@@ -85,7 +85,9 @@
       "file-type": ">=21.3.2",
       "@nestjs/core": ">=11.1.18",
       "@nestjs/common": ">=11.1.18",
-      "@nestjs/platform-express": ">=11.1.18"
+      "@nestjs/platform-express": ">=11.1.18",
+      "ajv": ">=8.18.0",
+      "qs": ">=6.15.2"
     }
   }
 }
