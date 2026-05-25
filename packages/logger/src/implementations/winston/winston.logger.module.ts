@@ -125,6 +125,16 @@ function buildMethodDisplays(params: {
     return { sourceDisplay, libMethodDisplay };
   }
 
+  // libMethod sem lib: ainda combina context.libMethod para mostrar ClassName.methodName
+  if (libMethod) {
+    const methodPath = `${context}.${libMethod}`;
+    libMethodDisplay = `[${colorize(methodPath)}]`;
+    if (source === context || source === methodPath) {
+      sourceDisplay = "";
+    }
+    return { sourceDisplay, libMethodDisplay };
+  }
+
   if (!source) {
     libMethodDisplay = `[${colorize(context)}]`;
     return { sourceDisplay, libMethodDisplay };
@@ -159,7 +169,9 @@ function formatDevelopmentLog(
   const libMethod = asString(info.libMethod);
   const libVersion = asString(info.libVersion);
   const stack = asString(info.stack);
-  const traceStack = Array.isArray(info.traceStack) ? info.traceStack : undefined;
+  const traceStack = Array.isArray(info.traceStack)
+    ? info.traceStack
+    : undefined;
 
   const meta =
     info.meta && typeof info.meta === "object"
@@ -219,7 +231,10 @@ function formatDevelopmentLog(
   let traceStackDisplay = "";
   if (traceStack && traceStack.length > 0) {
     const stackItems = traceStack
-      .map((item) => `[${colorizeText(useColors, colors.magenta, colors.reset, item)}]`)
+      .map(
+        (item) =>
+          `[${colorizeText(useColors, colors.magenta, colors.reset, item)}]`,
+      )
       .join("");
     traceStackDisplay = stackItems;
 
